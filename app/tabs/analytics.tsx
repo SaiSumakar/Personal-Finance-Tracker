@@ -1,15 +1,7 @@
-import { View, Text } from "react-native";
+import AnalyticsPage from "../../pages/AnalyticsPage";
 
-export default function Screen() {
+export default function AnalyticsScreen() {
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text>Analytics</Text>
-    </View>
+    <AnalyticsPage />
   );
 }
