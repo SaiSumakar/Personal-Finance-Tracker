@@ -93,6 +93,8 @@ export default function TransactionForm() {
   } = methods;
 
   const transactionType = watch("type");
+  const amount = watch("amount");
+
   const selectedCategory = watch("category_id");
 
   const categories =
@@ -102,8 +104,7 @@ export default function TransactionForm() {
 
   useEffect(() => {
     const categoryExists = categories.some(
-      (category) =>
-        category.id === selectedCategory
+      (category) => category.id === selectedCategory
     );
 
     if (
@@ -165,8 +166,6 @@ export default function TransactionForm() {
       return;
     }
 
-    // Reset immediately so another transaction
-    // can be entered without an interruption.
     methods.reset({
       type: data.type,
       amount: 0,
@@ -181,10 +180,15 @@ export default function TransactionForm() {
     });
   };
 
-  const buttonTitle =
-    transactionType === "income"
-      ? "Add Income"
-      : "Add Expense";
+  const isIncome = transactionType === "income";
+
+  const buttonTitle = isIncome
+    ? "Add Income"
+    : "Add Expense";
+
+  const amountLabel = isIncome
+    ? "Amount received"
+    : "Amount spent";
 
   return (
     <FormProvider {...methods}>
@@ -199,38 +203,87 @@ export default function TransactionForm() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={
-            styles.content
-          }
+          contentContainerStyle={styles.content}
         >
-
-          {/* Transaction type */}
+          {/* Type */}
           <View style={styles.typeSection}>
             <TransactionTypeToggle />
           </View>
 
-          {/* Amount hero */}
+          {/* Amount Hero */}
           <View
             style={[
               styles.amountCard,
-              transactionType === "income" &&
-                styles.amountCardIncome,
+              isIncome && styles.amountCardIncome,
             ]}
           >
-            <Text style={styles.amountLabel}>
-              {transactionType === "income"
-                ? "Money received"
-                : "Money spent"}
-            </Text>
+            <View style={styles.amountHeader}>
+              <View>
+                <Text style={styles.amountLabel}>
+                  {amountLabel}
+                </Text>
+
+                <Text style={styles.amountHint}>
+                  Enter the transaction amount
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.amountIcon,
+                  isIncome
+                    ? styles.incomeIcon
+                    : styles.expenseIcon,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.amountIconText,
+                    isIncome
+                      ? styles.incomeIconText
+                      : styles.expenseIconText,
+                  ]}
+                >
+                  ₹
+                </Text>
+              </View>
+            </View>
 
             <AmountInput />
+
+            {amount > 0 && (
+              <View style={styles.amountStatus}>
+                <View
+                  style={[
+                    styles.statusDot,
+                    {
+                      backgroundColor: isIncome
+                        ? Colors.success
+                        : Colors.primary,
+                    },
+                  ]}
+                />
+
+                <Text style={styles.amountStatusText}>
+                  {isIncome
+                    ? "Income transaction"
+                    : "Expense transaction"}
+                </Text>
+              </View>
+            )}
           </View>
 
-          {/* Details */}
+          {/* Essential Details */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
-              Details
-            </Text>
+            <View>
+              <Text style={styles.sectionTitle}>
+                Transaction details
+              </Text>
+
+              <Text style={styles.sectionSubtitle}>
+                Add the basic information
+              </Text>
+            </View>
           </View>
 
           <View style={styles.detailsCard}>
@@ -275,25 +328,59 @@ export default function TransactionForm() {
                 control={methods.control}
               />
             </View>
+          </View>
 
-            <View style={styles.divider} />
+          {/* Optional Details */}
+          <View style={styles.optionalHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>
+                Additional details
+              </Text>
 
+              <Text style={styles.sectionSubtitle}>
+                Optional information
+              </Text>
+            </View>
+
+            <View style={styles.optionalBadge}>
+              <Text style={styles.optionalText}>
+                Optional
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.detailsCard}>
             <View style={styles.noteField}>
               <NoteInput />
             </View>
           </View>
 
-          {/* Primary action */}
+          {/* Summary */}
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryIcon}>
+              <Text style={styles.summaryIconText}>
+                ✓
+              </Text>
+            </View>
+
+            <View style={styles.summaryContent}>
+              <Text style={styles.summaryTitle}>
+                Ready to save?
+              </Text>
+
+              <Text style={styles.summaryText}>
+                Your transaction will be added to your records.
+              </Text>
+            </View>
+          </View>
+
+          {/* Action */}
           <View style={styles.actionContainer}>
             <AppButton
               title={buttonTitle}
               onPress={handleSubmit(onSubmit)}
               loading={transactionLoading}
             />
-
-            <Text style={styles.actionHint}>
-              Your transaction will be added instantly
-            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -309,54 +396,33 @@ const styles = StyleSheet.create({
 
   content: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl,
-    paddingBottom: 48,
+    paddingTop: Spacing.lg,
+    paddingBottom: 40,
   },
 
-  header: {
-    marginBottom: Spacing.xl,
-  },
-
-  eyebrow: {
-    fontSize: Typography.caption,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    color: Colors.primary,
-    marginBottom: Spacing.xs,
-  },
-
-  title: {
-    fontSize: Typography.title,
-    lineHeight: 30,
-    fontWeight: "800",
-    color: Colors.text,
-    letterSpacing: -0.6,
-  },
-
-  subtitle: {
-    marginTop: 4,
-    fontSize: Typography.caption,
-    color: Colors.textSecondary,
-  },
+  /* Transaction Type */
 
   typeSection: {
     marginBottom: Spacing.md,
   },
 
+  /* Amount */
+
   amountCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.xl,
+
     borderWidth: 1,
     borderColor: Colors.border,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xl,
+
+    padding: Spacing.lg,
+
     marginBottom: Spacing.xxl,
 
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 5,
     },
     shadowOpacity: 0.04,
     shadowRadius: 12,
@@ -367,15 +433,90 @@ const styles = StyleSheet.create({
     borderColor: Colors.successLight,
   },
 
-  amountLabel: {
-    fontSize: Typography.caption,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
+  amountHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+
+    marginBottom: Spacing.md,
   },
+
+  amountLabel: {
+    fontSize: Typography.heading,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+
+  amountHint: {
+    marginTop: 3,
+    fontSize: Typography.small,
+    color: Colors.textSecondary,
+  },
+
+  amountIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  expenseIcon: {
+    backgroundColor: "#EFF6FF",
+  },
+
+  incomeIcon: {
+    backgroundColor: "#F0FDF4",
+  },
+
+  amountIconText: {
+    fontSize: 19,
+    fontWeight: "800",
+  },
+
+  expenseIconText: {
+    color: Colors.primary,
+  },
+
+  incomeIconText: {
+    color: Colors.success,
+  },
+
+  amountStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+
+    marginTop: Spacing.md,
+  },
+
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+
+    marginRight: 7,
+  },
+
+  amountStatusText: {
+    fontSize: Typography.small,
+    color: Colors.textSecondary,
+    fontWeight: "600",
+  },
+
+  /* Sections */
 
   sectionHeader: {
     marginBottom: Spacing.sm,
+  },
+
+  optionalHeader: {
+    marginTop: Spacing.xxl,
+    marginBottom: Spacing.sm,
+
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
 
   sectionTitle: {
@@ -384,15 +525,35 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
 
-  sectionHint: {
+  sectionSubtitle: {
     marginTop: 3,
     fontSize: Typography.small,
     color: Colors.textSecondary,
   },
 
+  optionalBadge: {
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+
+    borderRadius: 999,
+  },
+
+  optionalText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: Colors.textSecondary,
+  },
+
+  /* Details */
+
   detailsCard: {
     backgroundColor: Colors.surface,
     borderRadius: Radius.xl,
+
     borderWidth: 1,
     borderColor: Colors.border,
 
@@ -403,7 +564,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 3,
     },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.025,
     shadowRadius: 10,
     elevation: 1,
   },
@@ -421,14 +582,62 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
 
-  actionContainer: {
+  /* Summary */
+
+  summaryCard: {
+    flexDirection: "row",
+    alignItems: "center",
+
+    backgroundColor: Colors.surface,
+
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+
+    padding: Spacing.md,
+
     marginTop: Spacing.xxl,
   },
 
-  actionHint: {
-    textAlign: "center",
-    marginTop: Spacing.sm,
-    fontSize: Typography.small,
+  summaryIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+
+    backgroundColor: "#F0FDF4",
+
+    alignItems: "center",
+    justifyContent: "center",
+
+    marginRight: 10,
+  },
+
+  summaryIconText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: Colors.success,
+  },
+
+  summaryContent: {
+    flex: 1,
+  },
+
+  summaryTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+
+  summaryText: {
+    marginTop: 2,
+    fontSize: 11,
+    lineHeight: 16,
     color: Colors.textSecondary,
+  },
+
+  /* Action */
+
+  actionContainer: {
+    marginTop: Spacing.md,
   },
 });
