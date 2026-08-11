@@ -56,15 +56,12 @@ export default function TransactionPage() {
     loadTransactions();
     loadAccounts();
     loadCategories();
-  }, [loadTransactions, loadAccounts, loadCategories]);
+  }, [
+    loadTransactions,
+    loadAccounts,
+    loadCategories,
+  ]);
 
-  /*
-   * Sort transactions:
-   *
-   * Newest
-   *   ↓
-   * Oldest
-   */
   const sortedTransactions = useMemo(() => {
     return [...transactions].sort(
       (a, b) =>
@@ -73,16 +70,6 @@ export default function TransactionPage() {
     );
   }, [transactions]);
 
-  /*
-   * Search
-   *
-   * Filtering by:
-   * - category
-   * - account
-   * - note
-   *
-   * Actual advanced filtering will be added later.
-   */
   const filteredTransactions = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -133,24 +120,6 @@ export default function TransactionPage() {
     )?.name;
   };
 
-  /*
-   * Grouping is intentionally NOT implemented yet.
-   *
-   * We can later add:
-   *
-   * TODAY
-   * ├── transaction
-   * └── transaction
-   *
-   * YESTERDAY
-   * ├── transaction
-   *
-   * 06 AUG 2026
-   * └── transaction
-   *
-   * without changing the transaction card.
-   */
-
   const formatSectionTitle = (dateString: string) => {
     const date = new Date(dateString);
 
@@ -174,49 +143,77 @@ export default function TransactionPage() {
     const sections: Section[] = [];
 
     filteredTransactions.forEach((transaction) => {
-      const title = formatSectionTitle(transaction.transaction_date);
-      const lastSection = sections[sections.length - 1];
+      const title = formatSectionTitle(
+        transaction.transaction_date
+      );
 
-      if (lastSection && lastSection.title === title) {
+      const lastSection =
+        sections[sections.length - 1];
+
+      if (
+        lastSection &&
+        lastSection.title === title
+      ) {
         lastSection.data.push(transaction);
       } else {
-        sections.push({ title, data: [transaction] });
+        sections.push({
+          title,
+          data: [transaction],
+        });
       }
     });
 
     return sections;
   }, [filteredTransactions]);
 
+  const totalAmount = useMemo(() => {
+    return filteredTransactions.reduce(
+      (total, transaction) => {
+        return transaction.type === "income"
+          ? total + transaction.amount
+          : total - transaction.amount;
+      },
+      0
+    );
+  }, [filteredTransactions]);
+
+  const formatCurrency = (value: number) => {
+    return `₹${Math.abs(value).toLocaleString("en-IN", {
+      maximumFractionDigits: 0,
+    })}`;
+  };
+
   const renderTransaction = ({
     item,
   }: {
     item: (typeof filteredTransactions)[number];
   }) => {
-    const cardTransaction: {
-      id: string;
-      amount: number;
-      type: "income" | "expense";
-      date: string;
-      note?: string;
-      categoryId?: string;
-      accountId?: string;
-    } = {
+    const cardTransaction = {
       id: item.id.toString(),
       amount: item.amount,
-      type: item.type === "income" ? "income" : "expense",
+      type:
+        item.type === "income"
+          ? ("income" as const)
+          : ("expense" as const),
       date: item.transaction_date,
       note: item.note ?? undefined,
-      categoryId: item.category_id.toString(),
-      accountId: item.account_id.toString(),
+      categoryId:
+        item.category_id.toString(),
+      accountId:
+        item.account_id.toString(),
     };
 
     return (
       <TransactionCard
         transaction={cardTransaction}
-        categoryName={getCategoryName(item.category_id)}
-        accountName={getAccountName(item.account_id)}
+        categoryName={getCategoryName(
+          item.category_id
+        )}
+        accountName={getAccountName(
+          item.account_id
+        )}
         onPress={() => {
-          // Transaction details/edit screen will be added later.
+          // Transaction details/edit screen later.
         }}
       />
     );
@@ -224,21 +221,20 @@ export default function TransactionPage() {
 
   return (
     <View style={styles.container}>
-
-      {/* Search + Filter */}
-      <View style={styles.searchRow}>
+      {/* Search Header */}
+      <View style={styles.toolbar}>
         <View style={styles.searchContainer}>
           <Ionicons
             name="search-outline"
-            size={20}
-            color="#8C8C8C"
+            size={19}
+            color="#94A3B8"
           />
 
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder="Search transactions"
-            placeholderTextColor="#9B9B9B"
+            placeholderTextColor="#94A3B8"
             style={styles.searchInput}
             returnKeyType="search"
           />
@@ -250,8 +246,8 @@ export default function TransactionPage() {
             >
               <Ionicons
                 name="close-circle"
-                size={19}
-                color="#A5A5A5"
+                size={18}
+                color="#94A3B8"
               />
             </TouchableOpacity>
           )}
@@ -261,26 +257,75 @@ export default function TransactionPage() {
           style={styles.filterButton}
           activeOpacity={0.75}
           onPress={() => {
-            // Filter functionality will be added later.
+            // Filter functionality later.
           }}
         >
           <Ionicons
             name="options-outline"
-            size={21}
-            color="#222222"
+            size={20}
+            color="#334155"
           />
         </TouchableOpacity>
+      </View>
+
+      {/* Summary */}
+      <View style={styles.summaryRow}>
+        <View>
+          <Text style={styles.summaryLabel}>
+            {search
+              ? "Search results"
+              : "All transactions"}
+          </Text>
+
+          <Text style={styles.summaryCount}>
+            {filteredTransactions.length}{" "}
+            {filteredTransactions.length === 1
+              ? "transaction"
+              : "transactions"}
+          </Text>
+        </View>
+
+        {filteredTransactions.length > 0 && (
+          <View style={styles.netAmountContainer}>
+            <Text style={styles.netLabel}>
+              Net
+            </Text>
+
+            <Text
+              style={[
+                styles.netAmount,
+                {
+                  color:
+                    totalAmount >= 0
+                      ? "#15803D"
+                      : "#DC2626",
+                },
+              ]}
+            >
+              {totalAmount >= 0 ? "+" : "-"}
+              {formatCurrency(totalAmount)}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Transaction List */}
       <SectionList
         sections={transactionSections}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) =>
+          item.id.toString()
+        }
         renderItem={renderTransaction}
-        renderSectionHeader={({ section: { title } }) => (
+        renderSectionHeader={({
+          section: { title, data },
+        }) => (
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>
+            <Text style={styles.sectionTitle}>
               {title}
+            </Text>
+
+            <Text style={styles.sectionCount}>
+              {data.length}
             </Text>
           </View>
         )}
@@ -291,13 +336,21 @@ export default function TransactionPage() {
             styles.emptyListContent,
         ]}
         keyboardShouldPersistTaps="handled"
+        stickySectionHeadersEnabled={false}
+        ItemSeparatorComponent={() => (
+          <View style={styles.itemSeparator} />
+        )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconContainer}>
               <Ionicons
-                name="receipt-outline"
-                size={30}
-                color="#8B8B8B"
+                name={
+                  search
+                    ? "search-outline"
+                    : "receipt-outline"
+                }
+                size={28}
+                color="#64748B"
               />
             </View>
 
@@ -309,9 +362,21 @@ export default function TransactionPage() {
 
             <Text style={styles.emptyDescription}>
               {search
-                ? "Try searching for a different category, account or note."
-                : "Your transactions will appear here once you add one."}
+                ? "Try another category, account, or keyword."
+                : "Transactions you add will appear here."}
             </Text>
+
+            {search.length > 0 && (
+              <TouchableOpacity
+                style={styles.clearSearchButton}
+                onPress={() => setSearch("")}
+                activeOpacity={0.75}
+              >
+                <Text style={styles.clearSearchText}>
+                  Clear search
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
@@ -322,39 +387,22 @@ export default function TransactionPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F7F7F7",
-
-    padding: 16,
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: 16,
   },
 
-  header: {
-    paddingTop: 18,
-    paddingBottom: 16,
-  },
+  /* Toolbar */
 
-  title: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#171717",
-  },
-
-  subtitle: {
-    fontSize: 13,
-    color: "#8A8A8A",
-
-    marginTop: 3,
-  },
-
-  searchRow: {
+  toolbar: {
     flexDirection: "row",
     alignItems: "center",
 
+    paddingTop: 12,
     marginBottom: 16,
   },
 
   searchContainer: {
     flex: 1,
-
     height: 48,
 
     flexDirection: "row",
@@ -362,19 +410,19 @@ const styles = StyleSheet.create({
 
     backgroundColor: "#FFFFFF",
 
-    borderRadius: 14,
+    borderRadius: 15,
 
     paddingHorizontal: 14,
 
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: "#E2E8F0",
   },
 
   searchInput: {
     flex: 1,
 
     fontSize: 14,
-    color: "#171717",
+    color: "#0F172A",
 
     marginLeft: 9,
 
@@ -387,7 +435,7 @@ const styles = StyleSheet.create({
 
     marginLeft: 9,
 
-    borderRadius: 14,
+    borderRadius: 15,
 
     backgroundColor: "#FFFFFF",
 
@@ -395,27 +443,104 @@ const styles = StyleSheet.create({
     justifyContent: "center",
 
     borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderColor: "#E2E8F0",
   },
+
+  /* Summary */
+
+  summaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+
+  summaryLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#94A3B8",
+  },
+
+  summaryCount: {
+    marginTop: 2,
+
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#334155",
+  },
+
+  netAmountContainer: {
+    alignItems: "flex-end",
+  },
+
+  netLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#94A3B8",
+  },
+
+  netAmount: {
+    marginTop: 2,
+
+    fontSize: 14,
+    fontWeight: "800",
+  },
+
+  /* List */
 
   listContent: {
     paddingTop: 2,
-    paddingBottom: 30,
+    paddingBottom: 32,
   },
+
+  itemSeparator: {
+    height: 0,
+  },
+
+  /* Section */
 
   sectionHeader: {
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    backgroundColor: "#F0F0F0",
-    borderRadius: 14,
-    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+
+    paddingTop: 16,
+    paddingBottom: 8,
+
+    paddingHorizontal: 2,
   },
 
-  sectionHeaderText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#333333",
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#64748B",
+
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
+
+  sectionCount: {
+    minWidth: 21,
+    height: 21,
+
+    paddingHorizontal: 6,
+
+    marginLeft: 7,
+
+    borderRadius: 999,
+
+    backgroundColor: "#E2E8F0",
+
+    textAlign: "center",
+    textAlignVertical: "center",
+
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+
+  /* Empty */
 
   emptyListContent: {
     flexGrow: 1,
@@ -425,27 +550,28 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: "center",
 
-    paddingHorizontal: 30,
+    paddingHorizontal: 32,
+    paddingBottom: 80,
   },
 
   emptyIconContainer: {
-    width: 64,
-    height: 64,
+    width: 68,
+    height: 68,
 
-    borderRadius: 20,
+    borderRadius: 22,
 
-    backgroundColor: "#ECECEC",
+    backgroundColor: "#E2E8F0",
 
     alignItems: "center",
     justifyContent: "center",
 
-    marginBottom: 14,
+    marginBottom: 16,
   },
 
   emptyTitle: {
     fontSize: 17,
-    fontWeight: "600",
-    color: "#222222",
+    fontWeight: "700",
+    color: "#1E293B",
 
     marginBottom: 6,
   },
@@ -456,6 +582,23 @@ const styles = StyleSheet.create({
 
     textAlign: "center",
 
-    color: "#8A8A8A",
+    color: "#94A3B8",
+  },
+
+  clearSearchButton: {
+    marginTop: 18,
+
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+
+    borderRadius: 10,
+
+    backgroundColor: "#E2E8F0",
+  },
+
+  clearSearchText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
   },
 });

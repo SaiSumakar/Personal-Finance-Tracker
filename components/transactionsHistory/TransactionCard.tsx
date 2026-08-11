@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 
 type TransactionType = "income" | "expense";
@@ -19,6 +20,7 @@ interface TransactionCardProps {
     categoryId?: string;
     accountId?: string;
   };
+
   categoryName?: string;
   accountName?: string;
   onPress?: () => void;
@@ -32,54 +34,85 @@ export default function TransactionCard({
 }: TransactionCardProps) {
   const isIncome = transaction.type === "income";
 
+  const accentColor = isIncome
+    ? "#15803D"
+    : "#DC2626";
+
+  const iconBackground = isIncome
+    ? "#F0FDF4"
+    : "#FEF2F2";
+
+  const iconName = isIncome
+    ? "arrow-down-outline"
+    : "arrow-up-outline";
+
   return (
     <TouchableOpacity
-      activeOpacity={0.75}
+      activeOpacity={0.72}
       onPress={onPress}
       style={styles.card}
     >
-      {/* Left */}
-      <View style={styles.leftSection}>
-        <View
-          style={[
-            styles.iconContainer,
-            isIncome
-              ? styles.incomeIconContainer
-              : styles.expenseIconContainer,
-          ]}
+      {/* Category Icon */}
+      <View
+        style={[
+          styles.iconContainer,
+          {
+            backgroundColor: iconBackground,
+          },
+        ]}
+      >
+        <Ionicons
+          name={iconName}
+          size={19}
+          color={accentColor}
+        />
+      </View>
+
+      {/* Main Details */}
+      <View style={styles.details}>
+        <Text
+          style={styles.category}
+          numberOfLines={1}
         >
-          <Text style={styles.icon}>
-            {isIncome ? "↗" : "↘"}
-          </Text>
-        </View>
+          {categoryName || "Uncategorized"}
+        </Text>
 
-        <View style={styles.details}>
-          <Text style={styles.category} numberOfLines={1}>
-            {categoryName || "Uncategorized"}
-          </Text>
+        <View style={styles.metaRow}>
+          {accountName && (
+            <>
+              <Ionicons
+                name="wallet-outline"
+                size={11}
+                color="#94A3B8"
+              />
 
-          <View style={styles.metaRow}>
-            {accountName && (
-              <>
-                <Text style={styles.metaText} numberOfLines={1}>
-                  {accountName}
-                </Text>
+              <Text
+                style={styles.metaText}
+                numberOfLines={1}
+              >
+                {accountName}
+              </Text>
 
-                <Text style={styles.dot}>•</Text>
-              </>
+              <View style={styles.dot} />
+            </>
+          )}
+
+          <Text style={styles.metaText}>
+            {format(
+              new Date(transaction.date),
+              "dd MMM"
             )}
-
-            <Text style={styles.metaText}>
-              {format(new Date(transaction.date), "dd MMM yyyy")}
-            </Text>
-          </View>
-
-          {transaction.note ? (
-            <Text style={styles.note} numberOfLines={1}>
-              {transaction.note}
-            </Text>
-          ) : null}
+          </Text>
         </View>
+
+        {transaction.note ? (
+          <Text
+            style={styles.note}
+            numberOfLines={1}
+          >
+            {transaction.note}
+          </Text>
+        ) : null}
       </View>
 
       {/* Amount */}
@@ -87,15 +120,24 @@ export default function TransactionCard({
         <Text
           style={[
             styles.amount,
-            isIncome ? styles.incomeAmount : styles.expenseAmount,
+            { color: accentColor },
           ]}
         >
           {isIncome ? "+" : "-"}₹
-          {transaction.amount.toLocaleString("en-IN", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
+          {transaction.amount.toLocaleString(
+            "en-IN",
+            {
+              maximumFractionDigits: 2,
+            }
+          )}
         </Text>
+
+        <Ionicons
+          name="chevron-forward"
+          size={14}
+          color="#CBD5E1"
+          style={styles.chevron}
+        />
       </View>
     </TouchableOpacity>
   );
@@ -105,52 +147,30 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
 
     backgroundColor: "#FFFFFF",
 
-    borderRadius: 16,
+    borderRadius: 17,
 
-    paddingHorizontal: 16,
-    paddingVertical: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
 
-    marginBottom: 10,
+    marginBottom: 9,
 
     borderWidth: 1,
-    borderColor: "#EEEEEE",
-  },
-
-  leftSection: {
-    flexDirection: "row",
-    alignItems: "center",
-
-    flex: 1,
-    minWidth: 0,
+    borderColor: "#E2E8F0",
   },
 
   iconContainer: {
-    width: 44,
-    height: 44,
+    width: 43,
+    height: 43,
 
-    borderRadius: 14,
+    borderRadius: 13,
 
     alignItems: "center",
     justifyContent: "center",
 
     marginRight: 12,
-  },
-
-  incomeIconContainer: {
-    backgroundColor: "#EAF8F0",
-  },
-
-  expenseIconContainer: {
-    backgroundColor: "#FFF0F0",
-  },
-
-  icon: {
-    fontSize: 21,
-    fontWeight: "600",
   },
 
   details: {
@@ -159,57 +179,60 @@ const styles = StyleSheet.create({
   },
 
   category: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#171717",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
 
-    marginBottom: 4,
+    marginBottom: 5,
   },
 
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
 
-    maxWidth: "100%",
+    minWidth: 0,
   },
 
   metaText: {
-    fontSize: 12,
-    color: "#8A8A8A",
+    fontSize: 11,
+    color: "#94A3B8",
 
-    maxWidth: "45%",
+    marginLeft: 4,
+
+    maxWidth: "42%",
   },
 
   dot: {
-    fontSize: 12,
-    color: "#B5B5B5",
+    width: 3,
+    height: 3,
 
-    marginHorizontal: 5,
+    borderRadius: 2,
+
+    backgroundColor: "#CBD5E1",
+
+    marginHorizontal: 7,
   },
 
   note: {
-    fontSize: 12,
-    color: "#9A9A9A",
+    fontSize: 11,
+    color: "#A1A1AA",
 
-    marginTop: 3,
+    marginTop: 4,
   },
 
   amountContainer: {
-    marginLeft: 10,
+    marginLeft: 8,
 
     alignItems: "flex-end",
+    justifyContent: "center",
   },
 
   amount: {
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "800",
   },
 
-  incomeAmount: {
-    color: "#159447",
-  },
-
-  expenseAmount: {
-    color: "#D93636",
+  chevron: {
+    marginTop: 5,
   },
 });
