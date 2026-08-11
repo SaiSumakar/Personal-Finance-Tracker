@@ -3,13 +3,18 @@ export const Colors = {
   primaryLight: "#DBEAFE",
 
   success: "#16A34A",
+  successLight: "#DCFCE7",
+
   danger: "#DC2626",
+  dangerLight: "#FEE2E2",
+
   warning: "#F59E0B",
 
   background: "#F8FAFC",
   surface: "#FFFFFF",
 
   border: "#E2E8F0",
+  borderStrong: "#CBD5E1",
 
   text: "#0F172A",
   textSecondary: "#64748B",
@@ -19,6 +24,8 @@ export const Colors = {
   income: "#16A34A",
 
   disabled: "#CBD5E1",
+
+  overlay: "rgba(15, 23, 42, 0.04)",
 } as const;
 
 

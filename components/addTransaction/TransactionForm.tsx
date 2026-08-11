@@ -1,8 +1,12 @@
 import { useEffect } from "react";
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 import {
@@ -31,66 +35,56 @@ import { useCategoryStore } from "../../stores/categoryStore";
 
 import { Colors } from "../../constants/colors";
 import { Spacing } from "../../constants/spacing";
+import { Radius } from "../../constants/radius";
+import { Typography } from "../../constants/typography";
 
 export default function TransactionForm() {
-  const addTransaction =
-    useTransactionStore(
-      (state) => state.addTransaction
-    );
+  const addTransaction = useTransactionStore(
+    (state) => state.addTransaction
+  );
 
-  const transactionLoading =
-    useTransactionStore(
-      (state) => state.loading
-    );
+  const transactionLoading = useTransactionStore(
+    (state) => state.loading
+  );
 
-  const accounts =
-    useAccountStore(
-      (state) => state.accounts
-    );
+  const accounts = useAccountStore(
+    (state) => state.accounts
+  );
 
-  const defaultAccount =
-    useAccountStore(
-      (state) => state.defaultAccount
-    );
+  const defaultAccount = useAccountStore(
+    (state) => state.defaultAccount
+  );
 
-  const loadAccounts =
-    useAccountStore(
-      (state) => state.loadAccounts
-    );
+  const loadAccounts = useAccountStore(
+    (state) => state.loadAccounts
+  );
 
-  const expenseCategories =
-    useCategoryStore(
-      (state) => state.expenseCategories
-    );
+  const expenseCategories = useCategoryStore(
+    (state) => state.expenseCategories
+  );
 
-  const incomeCategories =
-    useCategoryStore(
-      (state) => state.incomeCategories
-    );
+  const incomeCategories = useCategoryStore(
+    (state) => state.incomeCategories
+  );
 
-  const loadCategories =
-    useCategoryStore(
-      (state) => state.loadCategories
-    );
+  const loadCategories = useCategoryStore(
+    (state) => state.loadCategories
+  );
 
-  const methods =
-    useForm<TransactionFormValues>({
-      resolver: zodResolver(
-        transactionSchema
-      ),
+  const methods = useForm<TransactionFormValues>({
+    resolver: zodResolver(transactionSchema),
 
-      defaultValues: {
-        type: "expense",
-        amount: 0,
-        category_id: 0,
-        account_id:
-          defaultAccount?.id ?? 0,
-        transaction_date: new Date(),
-        note: "",
-        payment_method: "",
-        location: "",
-      },
-    });
+    defaultValues: {
+      type: "expense",
+      amount: 0,
+      category_id: 0,
+      account_id: defaultAccount?.id ?? 0,
+      transaction_date: new Date(),
+      note: "",
+      payment_method: "",
+      location: "",
+    },
+  });
 
   const {
     handleSubmit,
@@ -98,29 +92,13 @@ export default function TransactionForm() {
     setValue,
   } = methods;
 
-  const transactionType =
-    watch("type");
+  const transactionType = watch("type");
+  const selectedCategory = watch("category_id");
 
-  const selectedCategory =
-    watch("category_id");
-
-  /*
-   * Categories depend on transaction type.
-   */
   const categories =
     transactionType === "income"
       ? incomeCategories
       : expenseCategories;
-
-  /*
-   * If the current category doesn't
-   * belong to the newly selected type,
-   * reset the category.
-   */
-  const categoryExists = categories.some(
-    (category) =>
-      category.id === selectedCategory
-  );
 
   useEffect(() => {
     const categoryExists = categories.some(
@@ -150,48 +128,52 @@ export default function TransactionForm() {
       defaultAccount &&
       methods.getValues("account_id") === 0
     ) {
-      setValue("account_id", defaultAccount.id);
+      setValue(
+        "account_id",
+        defaultAccount.id
+      );
     }
-  }, [defaultAccount, methods, setValue]);
+  }, [
+    defaultAccount,
+    methods,
+    setValue,
+  ]);
 
   const onSubmit = async (
     data: TransactionFormValues
   ) => {
-    const result =
-      await addTransaction({
-        account_id: data.account_id,
-        category_id: data.category_id,
-        type: data.type,
-        amount: data.amount,
-        transaction_date:
-          data.transaction_date.toISOString(),
-        note: data.note || undefined,
-        payment_method:
-          data.payment_method || undefined,
-        location:
-          data.location || undefined,
-      });
+    const result = await addTransaction({
+      account_id: data.account_id,
+      category_id: data.category_id,
+      type: data.type,
+      amount: data.amount,
+      transaction_date:
+        data.transaction_date.toISOString(),
+      note: data.note || undefined,
+      payment_method:
+        data.payment_method || undefined,
+      location:
+        data.location || undefined,
+    });
 
     if (!result) {
       Alert.alert(
         "Unable to save",
-        "The transaction could not be saved."
+        "The transaction could not be saved. Please try again."
       );
 
       return;
     }
 
-    Alert.alert(
-      "Transaction saved",
-      "Your transaction has been saved."
-    );
-
+    // Reset immediately so another transaction
+    // can be entered without an interruption.
     methods.reset({
-      type: "expense",
+      type: data.type,
       amount: 0,
       category_id: 0,
       account_id:
-        defaultAccount?.id ?? 0,
+        defaultAccount?.id ??
+        data.account_id,
       transaction_date: new Date(),
       note: "",
       payment_method: "",
@@ -199,59 +181,122 @@ export default function TransactionForm() {
     });
   };
 
+  const buttonTitle =
+    transactionType === "income"
+      ? "Add Income"
+      : "Add Expense";
+
   return (
     <FormProvider {...methods}>
-      <ScrollView
+      <KeyboardAvoidingView
         style={styles.container}
-        contentContainerStyle={
-          styles.content
+        behavior={
+          Platform.OS === "ios"
+            ? "padding"
+            : undefined
         }
-        keyboardShouldPersistTaps="handled"
       >
-        <TransactionTypeToggle />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={
+            styles.content
+          }
+        >
 
-        <AmountInput />
+          {/* Transaction type */}
+          <View style={styles.typeSection}>
+            <TransactionTypeToggle />
+          </View>
 
-        <AppSelect
-          label="Category"
-          name="category_id"
-          control={methods.control}
-          placeholder="Select category"
-          options={categories.map(
-            (category) => ({
-              label: category.name,
-              value: category.id,
-            })
-          )}
-        />
+          {/* Amount hero */}
+          <View
+            style={[
+              styles.amountCard,
+              transactionType === "income" &&
+                styles.amountCardIncome,
+            ]}
+          >
+            <Text style={styles.amountLabel}>
+              {transactionType === "income"
+                ? "Money received"
+                : "Money spent"}
+            </Text>
 
-        <AppSelect
-          label="Account"
-          name="account_id"
-          control={methods.control}
-          placeholder="Select account"
-          options={accounts.map(
-            (account) => ({
-              label: account.name,
-              value: account.id,
-            })
-          )}
-        />
+            <AmountInput />
+          </View>
 
-        <AppDatePicker
-          label="Date"
-          name="transaction_date"
-          control={methods.control}
-        />
+          {/* Details */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              Details
+            </Text>
+          </View>
 
-        <NoteInput />
+          <View style={styles.detailsCard}>
+            <View style={styles.field}>
+              <AppSelect
+                label="Category"
+                name="category_id"
+                control={methods.control}
+                placeholder="Select category"
+                options={categories.map(
+                  (category) => ({
+                    label: category.name,
+                    value: category.id,
+                  })
+                )}
+              />
+            </View>
 
-        <AppButton
-          title="Save Transaction"
-          onPress={handleSubmit(onSubmit)}
-          loading={transactionLoading}
-        />
-      </ScrollView>
+            <View style={styles.divider} />
+
+            <View style={styles.field}>
+              <AppSelect
+                label="Account"
+                name="account_id"
+                control={methods.control}
+                placeholder="Select account"
+                options={accounts.map(
+                  (account) => ({
+                    label: account.name,
+                    value: account.id,
+                  })
+                )}
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.field}>
+              <AppDatePicker
+                label="Date"
+                name="transaction_date"
+                control={methods.control}
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.noteField}>
+              <NoteInput />
+            </View>
+          </View>
+
+          {/* Primary action */}
+          <View style={styles.actionContainer}>
+            <AppButton
+              title={buttonTitle}
+              onPress={handleSubmit(onSubmit)}
+              loading={transactionLoading}
+            />
+
+            <Text style={styles.actionHint}>
+              Your transaction will be added instantly
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </FormProvider>
   );
 }
@@ -263,8 +308,127 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    padding: Spacing.lg,
-    gap: Spacing.lg,
-    paddingBottom: Spacing.xxxl,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.xl,
+    paddingBottom: 48,
+  },
+
+  header: {
+    marginBottom: Spacing.xl,
+  },
+
+  eyebrow: {
+    fontSize: Typography.caption,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
+  },
+
+  title: {
+    fontSize: Typography.title,
+    lineHeight: 30,
+    fontWeight: "800",
+    color: Colors.text,
+    letterSpacing: -0.6,
+  },
+
+  subtitle: {
+    marginTop: 4,
+    fontSize: Typography.caption,
+    color: Colors.textSecondary,
+  },
+
+  typeSection: {
+    marginBottom: Spacing.md,
+  },
+
+  amountCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    marginBottom: Spacing.xxl,
+
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+
+  amountCardIncome: {
+    borderColor: Colors.successLight,
+  },
+
+  amountLabel: {
+    fontSize: Typography.caption,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
+  },
+
+  sectionHeader: {
+    marginBottom: Spacing.sm,
+  },
+
+  sectionTitle: {
+    fontSize: Typography.heading,
+    fontWeight: "700",
+    color: Colors.text,
+  },
+
+  sectionHint: {
+    marginTop: 3,
+    fontSize: Typography.small,
+    color: Colors.textSecondary,
+  },
+
+  detailsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+
+    paddingHorizontal: Spacing.lg,
+
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 1,
+  },
+
+  field: {
+    paddingVertical: Spacing.md,
+  },
+
+  noteField: {
+    paddingVertical: Spacing.md,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+  },
+
+  actionContainer: {
+    marginTop: Spacing.xxl,
+  },
+
+  actionHint: {
+    textAlign: "center",
+    marginTop: Spacing.sm,
+    fontSize: Typography.small,
+    color: Colors.textSecondary,
   },
 });
