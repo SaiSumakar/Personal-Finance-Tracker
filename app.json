@@ -2,6 +2,7 @@
   "expo": {
     "name": "finance-tracker",
     "slug": "finance-tracker",
+    "scheme": "financetracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,6 +21,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-status-bar",
+      "@react-native-community/datetimepicker"
+    ]
   }
 }
