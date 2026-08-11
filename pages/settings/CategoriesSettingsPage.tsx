@@ -303,64 +303,88 @@ export default function CategorySettingsPage() {
             </Text>
           </View>
         ) : (
-          <View style={styles.categoryList}>
-            {categories.map((category) => (
-              <Pressable
-                style={styles.categoryRow}
-                key={category.id}
-                onPress={() => openEditModal(category)}
-                android_ripple={{
-                  color: "rgba(0, 0, 0, 0.04)",
-                }}
-              >
-                <View
-                  style={[
-                    styles.categoryIndicator,
-                    {
-                      backgroundColor:
-                        category.color ??
-                        Colors.textSecondary,
-                    },
-                  ]}
-                />
+          <View style={styles.categorySection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>
+                {categoryLabel}
+              </Text>
 
-                <View style={styles.categoryInfo}>
-                  <Text
-                    style={styles.categoryName}
-                    numberOfLines={1}
-                  >
-                    {category.name}
-                  </Text>
+              <Text style={styles.categoryCount}>
+                {categories.length}
+              </Text>
+            </View>
 
-                  <Text style={styles.categoryType}>
-                    {category.type}
-                  </Text>
-                </View>
-
+            <View style={styles.categoryList}>
+              {categories.map((category) => (
                 <Pressable
                   style={({ pressed }) => [
-                    styles.deleteButton,
-                    pressed &&
-                      styles.deleteButtonPressed,
+                    styles.categoryCard,
+                    pressed && styles.categoryCardPressed,
                   ]}
-                  hitSlop={8}
-                  onPress={() =>
-                    handleDeleteCategory(
-                      category.id,
-                      category.name
-                    )
-                  }
-                  accessibilityRole="button"
-                  accessibilityLabel={`Delete ${category.name}`}
+                  key={category.id}
+                  onPress={() => openEditModal(category)}
+                  android_ripple={{
+                    color: "rgba(0, 0, 0, 0.035)",
+                  }}
                 >
-                  <Ionicons
-                    name="trash-outline"
-                    size={19}
-                    color="#D9534F"
+                  <View
+                    style={[
+                      styles.categoryAccent,
+                      {
+                        backgroundColor:
+                          category.color ??
+                          Colors.textSecondary,
+                      },
+                    ]}
                   />
+
+                  <View style={styles.categoryContent}>
+                    <View style={styles.categoryDetails}>
+                      <Text
+                        style={styles.categoryName}
+                        numberOfLines={1}
+                      >
+                        {category.name}
+                      </Text>
+
+                      <View style={styles.categoryMeta}>
+                        <Text style={styles.categoryType}>
+                          {category.type}
+                        </Text>
+
+                        <View style={styles.metaDot} />
+
+                        <Text style={styles.categoryHint}>
+                          Category
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.deleteButton,
+                      pressed && styles.deleteButtonPressed,
+                    ]}
+                    hitSlop={8}
+                    onPress={() =>
+                      handleDeleteCategory(
+                        category.id,
+                        category.name
+                      )
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={`Delete ${category.name}`}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={18}
+                      color="#D9534F"
+                    />
+                  </Pressable>
                 </Pressable>
-              </Pressable>
-            ))}
+              ))}
+            </View>
           </View>
         )}
       </ScrollView>
@@ -411,7 +435,7 @@ export default function CategorySettingsPage() {
 
             {/* Modal header */}
             <View style={styles.modalHeader}>
-              <View>
+              <View style={styles.modalHeaderText}>
                 <Text style={styles.modalTitle}>
                   {editingCategoryId === null
                     ? "Add category"
@@ -426,14 +450,17 @@ export default function CategorySettingsPage() {
               </View>
 
               <Pressable
-                style={styles.closeButton}
+                style={({ pressed }) => [
+                  styles.closeButton,
+                  pressed && styles.closeButtonPressed,
+                ]}
                 onPress={closeCategoryModal}
                 hitSlop={8}
               >
                 <Ionicons
                   name="close"
-                  size={22}
-                  color={Colors.textSecondary}
+                  size={21}
+                  color={Colors.text}
                 />
               </Pressable>
             </View>
@@ -497,10 +524,7 @@ export default function CategorySettingsPage() {
                       <Pressable
                         key={color}
                         style={[
-                          styles.colorOption,
-                          {
-                            backgroundColor: color,
-                          },
+                          styles.colorOptionOuter,
                           isSelected &&
                             styles.colorOptionSelected,
                         ]}
@@ -510,11 +534,21 @@ export default function CategorySettingsPage() {
                         accessibilityRole="button"
                         accessibilityLabel={`Select color ${color}`}
                       >
+                        <View
+                          style={[
+                            styles.colorOption,
+                            {
+                              backgroundColor: color,
+                            },
+                          ]}
+                        />
+
                         {isSelected && (
                           <Ionicons
                             name="checkmark"
-                            size={18}
+                            size={16}
                             color="#FFFFFF"
+                            style={styles.colorCheck}
                           />
                         )}
                       </Pressable>
@@ -624,58 +658,124 @@ const styles = StyleSheet.create({
 
   /* Category list */
 
-  categoryList: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor:
-      Colors.border ?? Colors.textSecondary,
+  categorySection: {
+    marginTop: 2,
   },
 
-  categoryRow: {
-    minHeight: 68,
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth:
-      StyleSheet.hairlineWidth,
-    borderBottomColor:
-      Colors.border ?? Colors.textSecondary,
+    justifyContent: "space-between",
+    marginBottom: 10,
   },
 
-  categoryIndicator: {
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+
+  categoryCount: {
+    minWidth: 24,
+    height: 24,
+    paddingHorizontal: 7,
+    borderRadius: 12,
+    textAlign: "center",
+    textAlignVertical: "center",
+    fontSize: 11,
+    fontWeight: "700",
+    color: Colors.textSecondary,
+    backgroundColor:
+      Colors.surface ?? "rgba(0, 0, 0, 0.05)",
+  },
+
+  categoryList: {
+    gap: 10,
+  },
+
+  categoryCard: {
+    minHeight: 82,
+    borderRadius: 16,
+    backgroundColor:
+      Colors.surface ?? "rgba(0, 0, 0, 0.025)",
+    borderWidth: 1,
+    borderColor:
+      Colors.border ?? "rgba(0, 0, 0, 0.08)",
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+
+  categoryCardPressed: {
+    opacity: 0.78,
+  },
+
+  categoryAccent: {
     width: 4,
-    height: 42,
-    borderRadius: 2,
-    marginRight: Spacing.md,
+    alignSelf: "stretch",
   },
 
-  categoryInfo: {
+  categoryContent: {
     flex: 1,
     minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 14,
+    paddingVertical: 14,
+  },
+
+  categoryDetails: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 10,
   },
 
   categoryName: {
     fontSize: Typography.body,
-    fontWeight: "600",
+    fontWeight: "700",
     color: Colors.text,
+    marginBottom: 5,
+  },
+
+  categoryMeta: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   categoryType: {
-    marginTop: 3,
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textSecondary,
     textTransform: "capitalize",
   },
 
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: Colors.textSecondary,
+    marginHorizontal: 7,
+    opacity: 0.6,
+  },
+
+  categoryHint: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+  },
+
   deleteButton: {
-    width: 38,
-    height: 38,
+    width: 45,
+    height: 45,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 19,
-    marginLeft: Spacing.sm,
+    marginRight: 7,
   },
 
   deleteButtonPressed: {
-    backgroundColor: "rgba(255, 0, 0, 0.08)",
+    backgroundColor: "rgba(217, 83, 79, 0.10)",
   },
 
   /* Empty state */
@@ -759,33 +859,38 @@ const styles = StyleSheet.create({
 
   modalBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
   },
 
   modalContainer: {
-    maxHeight: "90%",
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: Spacing.sm,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    maxHeight: "92%",
+    paddingTop: 8,
+    overflow: "hidden",
   },
 
   modalHandle: {
-    alignSelf: "center",
-    width: 40,
+    width: 38,
     height: 4,
-    borderRadius: 2,
-    backgroundColor:
-      Colors.border ?? "rgba(0, 0, 0, 0.12)",
-    marginBottom: Spacing.md,
+    borderRadius: 4,
+    alignSelf: "center",
+    backgroundColor: Colors.textSecondary,
+    opacity: 0.3,
+    marginBottom: 15,
   },
 
   modalHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    justifyContent: "space-between",
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
+    paddingBottom: 17,
+  },
+
+  modalHeaderText: {
+    flex: 1,
+    paddingRight: 12,
   },
 
   modalTitle: {
@@ -796,23 +901,29 @@ const styles = StyleSheet.create({
   },
 
   modalSubtitle: {
-    maxWidth: 280,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
     color: Colors.textSecondary,
+    lineHeight: 19,
   },
 
   closeButton: {
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor:
+      Colors.surface ?? "rgba(0, 0, 0, 0.05)",
+  },
+
+  closeButtonPressed: {
+    opacity: 0.6,
   },
 
   formContent: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: 32,
+    paddingTop: 2,
+    paddingBottom: 34,
   },
 
   field: {
@@ -905,53 +1016,61 @@ const styles = StyleSheet.create({
   colorGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 13,
   },
 
-  colorOption: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  colorOptionOuter: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
 
   colorOptionSelected: {
-    borderWidth: 3,
-    borderColor: Colors.background,
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    elevation: 3,
+    borderWidth: 2,
+    borderColor: Colors.text,
+  },
+
+  colorOptionPressed: {
+    opacity: 0.7,
+  },
+
+  colorOption: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+  },
+
+  colorCheck: {
+    position: "absolute",
   },
 
   /* Modal save button */
 
   modalAddButton: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: 15,
     backgroundColor:
       Colors.primary ?? "#4F46E5",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: Spacing.sm,
+    gap: 8,
+    marginTop: 3,
   },
 
   modalAddButtonPressed: {
-    opacity: 0.85,
+    opacity: 0.86,
   },
 
   modalAddButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.55,
   },
 
   modalAddButtonText: {
     color: "#FFFFFF",
-    fontSize: Typography.body,
+    fontSize: 15,
     fontWeight: "700",
   },
 });

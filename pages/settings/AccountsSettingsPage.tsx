@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Modal,
@@ -36,14 +37,15 @@ export default function AccountsSettingsPage() {
   const accounts = useAccountStore((state) => state.accounts);
   const loadAccounts = useAccountStore((state) => state.loadAccounts);
 
-  // Change this if your store uses a different action name.
   const addAccount = useAccountStore((state) => state.addAccount);
   const updateAccount = useAccountStore((state) => state.updateAccount);
   const deleteAccount = useAccountStore((state) => state.deleteAccount);
 
-  const [editingAccountId, setEditingAccountId] = useState<number | null>(null);
+  const [editingAccountId, setEditingAccountId] = useState<number | null>(
+    null
+  );
 
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const [name, setName] = useState("");
   const [type, setType] = useState("");
@@ -58,6 +60,8 @@ export default function AccountsSettingsPage() {
     loadAccounts();
   }, [loadAccounts]);
 
+  const isEditing = editingAccountId !== null;
+
   const resetForm = () => {
     setName("");
     setType("");
@@ -70,31 +74,29 @@ export default function AccountsSettingsPage() {
   const openAddModal = () => {
     resetForm();
     setEditingAccountId(null);
-    setIsAddModalVisible(true);
+    setIsModalVisible(true);
   };
 
   const openEditModal = (account: (typeof accounts)[number]) => {
     setEditingAccountId(account.id);
-
     setName(account.name);
     setType(account.type);
     setCurrency(account.currency);
-
-    // Keep these at their current/default values for now.
-    // We are not editing them yet.
-    setOpeningBalance("");
+    setOpeningBalance(
+      account.opening_balance !== undefined &&
+        account.opening_balance !== null
+        ? String(account.opening_balance)
+        : ""
+    );
     setSelectedColor(account.color ?? ACCOUNT_COLORS[0]);
-
     setShowCurrencyDropdown(false);
-    setIsAddModalVisible(true);
+    setIsModalVisible(true);
   };
 
-  const closeAddModal = () => {
-    if (isSaving) {
-      return;
-    }
+  const closeModal = () => {
+    if (isSaving) return;
 
-    setIsAddModalVisible(false);
+    setIsModalVisible(false);
     setShowCurrencyDropdown(false);
     setEditingAccountId(null);
   };
@@ -104,49 +106,52 @@ export default function AccountsSettingsPage() {
     const trimmedType = type.trim();
 
     if (!trimmedName) {
-      Alert.alert("Missing name", "Please enter an account name.");
+      Alert.alert("Account name required", "Please enter an account name.");
       return;
     }
 
     if (!trimmedType) {
-      Alert.alert("Missing type", "Please enter an account type.");
+      Alert.alert(
+        "Account type required",
+        "Please enter a type such as Bank, Cash, or Wallet."
+      );
+      return;
+    }
+
+    const parsedBalance = Number(openingBalance || 0);
+
+    if (Number.isNaN(parsedBalance)) {
+      Alert.alert("Invalid balance", "Please enter a valid amount.");
       return;
     }
 
     try {
       setIsSaving(true);
 
+      const payload = {
+        name: trimmedName,
+        type: trimmedType,
+        currency,
+        opening_balance: parsedBalance,
+        color: selectedColor,
+        icon: null,
+      };
+
       if (editingAccountId === null) {
-        // ADD
-        await addAccount({
-          name: trimmedName,
-          type: trimmedType,
-          currency,
-          opening_balance: Number(openingBalance || 0),
-          color: selectedColor,
-          icon: null,
-        });
+        await addAccount(payload);
       } else {
-        // EDIT
-        await updateAccount(editingAccountId, {
-          name: trimmedName,
-          type: trimmedType,
-          currency,
-          opening_balance: Number(openingBalance || 0),
-          color: selectedColor,
-          icon: null,
-        });
+        await updateAccount(editingAccountId, payload);
       }
 
-      setIsAddModalVisible(false);
+      setIsModalVisible(false);
       setEditingAccountId(null);
       resetForm();
 
       await loadAccounts();
-    } catch (error) {
+    } catch {
       Alert.alert(
         "Couldn't save account",
-        "Something went wrong while saving the account."
+        "Something went wrong. Please try again."
       );
     } finally {
       setIsSaving(false);
@@ -159,7 +164,7 @@ export default function AccountsSettingsPage() {
   ) => {
     Alert.alert(
       "Delete account?",
-      `Are you sure you want to delete "${accountName}"?`,
+      `"${accountName}" will be removed from your accounts.`,
       [
         {
           text: "Cancel",
@@ -168,8 +173,16 @@ export default function AccountsSettingsPage() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            deleteAccount(accountId);
+          onPress: async () => {
+            try {
+              await deleteAccount(accountId);
+              await loadAccounts();
+            } catch {
+              Alert.alert(
+                "Couldn't delete account",
+                "Please try again."
+              );
+            }
           },
         },
       ]
@@ -183,19 +196,20 @@ export default function AccountsSettingsPage() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* Simple page intro */}
         <View style={styles.header}>
-
           <Text style={styles.subtitle}>
-            Manage your accounts used for tracking transactions.
+            Manage the accounts you use for tracking transactions.
           </Text>
         </View>
 
+        {/* Accounts */}
         {accounts.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIcon}>
               <Ionicons
                 name="wallet-outline"
-                size={23}
+                size={25}
                 color={Colors.textSecondary}
               />
             </View>
@@ -203,110 +217,299 @@ export default function AccountsSettingsPage() {
             <Text style={styles.emptyTitle}>No accounts yet</Text>
 
             <Text style={styles.emptyDescription}>
-              Add accounts to get started
+              Add a bank account, cash wallet, or another account
+              to get started.
             </Text>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.emptyAddButton,
+                pressed && styles.emptyAddButtonPressed,
+              ]}
+              onPress={openAddModal}
+            >
+              <Ionicons name="add" size={19} color="#FFFFFF" />
+
+              <Text style={styles.emptyAddButtonText}>
+                Add account
+              </Text>
+            </Pressable>
           </View>
         ) : (
-          <View style={styles.accountList}>
-            {accounts.map((account) => (
-              <Pressable
-                style={styles.accountInfo}
-                onPress={() => openEditModal(account)}
-                android_ripple={{ color: "rgba(0, 0, 0, 0.04)" }}
-                key={account.id}
-              >
-                <View style={styles.accountRow}>
-                  <View
-                    style={[
-                      styles.accountIndicator,
-                      {
-                        backgroundColor:
-                          account.color ?? Colors.textSecondary,
-                      },
-                    ]}
-                  />
+          <>
+            {/* Active accounts */}
+            <View style={styles.accountSection}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Accounts</Text>
 
-                  <View style={styles.accountInfo}>
-                    <Text
-                      style={styles.accountName}
-                      numberOfLines={1}
-                    >
-                      {account.name}
-                    </Text>
+                <Text style={styles.accountCount}>
+                  {accounts.filter((account) => !account.is_archived).length}
+                </Text>
+              </View>
 
-                    <View style={styles.accountMeta}>
-                      <Text style={styles.accountType}>
-                        {account.type}
-                      </Text>
-
-                      <Text style={styles.metaSeparator}>·</Text>
-
-                      <Text style={styles.accountCurrency}>
-                        {account.currency}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.accountRight}>
-                    <Text style={styles.balance}>
-                      {formatBalance(
-                        account.opening_balance,
-                        account.currency
-                      )}
-                    </Text>
-
+              <View style={styles.accountList}>
+                {accounts
+                  .filter((account) => !account.is_archived)
+                  .map((account) => (
                     <Pressable
+                      key={account.id}
                       style={({ pressed }) => [
-                        styles.deleteButton,
-                        pressed && styles.deleteButtonPressed,
+                        styles.accountCard,
+                        pressed && styles.accountCardPressed,
                       ]}
-                      hitSlop={8}
-                      onPress={() =>
-                        handleDeleteAccount(
-                          account.id,
-                          account.name
-                        )
-                      }
-                      accessibilityRole="button"
-                      accessibilityLabel={`Delete ${account.name}`}
+                      onPress={() => openEditModal(account)}
+                      android_ripple={{
+                        color: "rgba(0, 0, 0, 0.035)",
+                      }}
                     >
-                      <Ionicons
-                        name="trash-outline"
-                        size={19}
-                        color="#D9534F"
+                      <View
+                        style={[
+                          styles.accountAccent,
+                          {
+                            backgroundColor:
+                              account.color ?? Colors.textSecondary,
+                          },
+                        ]}
                       />
+
+                      <View style={styles.accountContent}>
+                        <View style={styles.accountDetails}>
+                          <Text
+                            style={styles.accountName}
+                            numberOfLines={1}
+                          >
+                            {account.name}
+                          </Text>
+
+                          <View style={styles.accountMeta}>
+                            <Text style={styles.accountType}>
+                              {account.type}
+                            </Text>
+
+                            <View style={styles.metaDot} />
+
+                            <Text style={styles.accountCurrency}>
+                              {account.currency}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.accountAmount}>
+                          <Text style={styles.balance}>
+                            {formatBalance(
+                              account.opening_balance,
+                              account.currency
+                            )}
+                          </Text>
+
+                          <Text style={styles.balanceCaption}>
+                            opening balance
+                          </Text>
+                        </View>
+
+                      </View>
+
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.deleteButton,
+                          pressed && styles.deleteButtonPressed,
+                        ]}
+                        hitSlop={8}
+                        onPress={(event) => {
+                          event.stopPropagation();
+
+                          handleDeleteAccount(
+                            account.id,
+                            account.name
+                          );
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete ${account.name}`}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={18}
+                          color="#D9534F"
+                        />
+                      </Pressable>
                     </Pressable>
-                  </View>
+                  ))}
+              </View>
+            </View>
+
+            {/* Archived accounts */}
+            {accounts.some((account) => account.is_archived) && (
+              <View style={styles.archivedSection}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>
+                    Archived
+                  </Text>
+
+                  <Text style={styles.accountCount}>
+                    {accounts.filter(
+                      (account) => account.is_archived
+                    ).length}
+                  </Text>
                 </View>
-              </Pressable>
-            ))}
-          </View>
+
+                <View style={styles.accountList}>
+                  {accounts
+                    .filter((account) => account.is_archived)
+                    .map((account) => (
+                      <Pressable
+                        key={account.id}
+                        style={({ pressed }) => [
+                          styles.accountCard,
+                          styles.archivedAccountCard,
+                          pressed && styles.accountCardPressed,
+                        ]}
+                        onPress={() => openEditModal(account)}
+                        android_ripple={{
+                          color: "rgba(0, 0, 0, 0.025)",
+                        }}
+                      >
+                        <View
+                          style={[
+                            styles.accountAccent,
+                            styles.archivedAccent,
+                            {
+                              backgroundColor:
+                                account.color ??
+                                Colors.textSecondary,
+                            },
+                          ]}
+                        />
+
+                        <View style={styles.accountContent}>
+                          <View style={styles.accountDetails}>
+                            <Text
+                              style={[
+                                styles.accountName,
+                                styles.archivedAccountName,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {account.name}
+                            </Text>
+
+                            <View style={styles.accountMeta}>
+                              <Text
+                                style={[
+                                  styles.accountType,
+                                  styles.archivedText,
+                                ]}
+                              >
+                                {account.type}
+                              </Text>
+
+                              <View
+                                style={[
+                                  styles.metaDot,
+                                  styles.archivedDot,
+                                ]}
+                              />
+
+                              <Text
+                                style={[
+                                  styles.accountCurrency,
+                                  styles.archivedText,
+                                ]}
+                              >
+                                {account.currency}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.accountAmount}>
+                            <Text
+                              style={[
+                                styles.balance,
+                                styles.archivedBalance,
+                              ]}
+                            >
+                              {formatBalance(
+                                account.opening_balance,
+                                account.currency
+                              )}
+                            </Text>
+
+                            <Text
+                              style={[
+                                styles.balanceCaption,
+                                styles.archivedText,
+                              ]}
+                            >
+                              opening balance
+                            </Text>
+                          </View>
+
+                          <Ionicons
+                            name="chevron-forward"
+                            size={17}
+                            color={Colors.textSecondary}
+                            style={[
+                              styles.chevron,
+                              styles.archivedChevron,
+                            ]}
+                          />
+                        </View>
+
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.deleteButton,
+                            pressed && styles.deleteButtonPressed,
+                          ]}
+                          hitSlop={8}
+                          onPress={(event) => {
+                            event.stopPropagation();
+
+                            handleDeleteAccount(
+                              account.id,
+                              account.name
+                            );
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Delete ${account.name}`}
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={17}
+                            color="#D9534F"
+                          />
+                        </Pressable>
+                      </Pressable>
+                    ))}
+                </View>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
 
-      {/* Fixed add button */}
-      <View style={styles.bottomAction}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.addButton,
-            pressed && styles.addButtonPressed,
-          ]}
-          onPress={openAddModal}
-        >
-          <Ionicons name="add" size={21} color="#FFFFFF" />
+      {accounts.length > 0 && (
+        <View style={styles.bottomAction}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.addButton,
+              pressed && styles.addButtonPressed,
+            ]}
+            onPress={openAddModal}
+          >
+            <Ionicons name="add" size={20} color="#FFFFFF" />
 
-          <Text style={styles.addButtonText}>
-            Add account
-          </Text>
-        </Pressable>
-      </View>
+            <Text style={styles.addButtonText}>
+              Add account
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
-      {/* Add Account Modal */}
+      {/* Add / Edit modal */}
       <Modal
-        visible={isAddModalVisible}
+        visible={isModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={closeAddModal}
+        onRequestClose={closeModal}
       >
         <KeyboardAvoidingView
           style={styles.modalRoot}
@@ -314,36 +517,37 @@ export default function AccountsSettingsPage() {
         >
           <Pressable
             style={styles.modalBackdrop}
-            onPress={closeAddModal}
+            onPress={closeModal}
           />
 
           <View style={styles.modalContainer}>
             <View style={styles.modalHandle} />
 
             <View style={styles.modalHeader}>
-              <View>
+              <View style={styles.modalHeaderText}>
                 <Text style={styles.modalTitle}>
-                  {editingAccountId === null
-                    ? "Add account"
-                    : "Edit account"}
+                  {isEditing ? "Edit account" : "Add account"}
                 </Text>
 
                 <Text style={styles.modalSubtitle}>
-                  {editingAccountId === null
-                    ? "Add an account to start tracking transactions."
-                    : "Update your account details."}
+                  {isEditing
+                    ? "Update your account details."
+                    : "Enter the details for your new account."}
                 </Text>
               </View>
 
               <Pressable
-                style={styles.closeButton}
-                onPress={closeAddModal}
+                style={({ pressed }) => [
+                  styles.closeButton,
+                  pressed && styles.closeButtonPressed,
+                ]}
+                onPress={closeModal}
                 hitSlop={8}
               >
                 <Ionicons
                   name="close"
-                  size={22}
-                  color={Colors.textSecondary}
+                  size={21}
+                  color={Colors.text}
                 />
               </Pressable>
             </View>
@@ -353,7 +557,6 @@ export default function AccountsSettingsPage() {
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.formContent}
             >
-              {/* Name */}
               <View style={styles.field}>
                 <Text style={styles.label}>Name</Text>
 
@@ -364,11 +567,11 @@ export default function AccountsSettingsPage() {
                   placeholderTextColor={Colors.textSecondary}
                   style={styles.input}
                   autoCapitalize="words"
+                  autoCorrect={false}
                   returnKeyType="next"
                 />
               </View>
 
-              {/* Type */}
               <View style={styles.field}>
                 <Text style={styles.label}>Type</Text>
 
@@ -379,108 +582,126 @@ export default function AccountsSettingsPage() {
                   placeholderTextColor={Colors.textSecondary}
                   style={styles.input}
                   autoCapitalize="words"
+                  autoCorrect={false}
                   returnKeyType="next"
                 />
               </View>
 
-              {/* Currency */}
-              <View style={styles.field}>
-                <Text style={styles.label}>Currency</Text>
-
-                <Pressable
+              <View style={styles.formRow}>
+                <View
                   style={[
-                    styles.input,
-                    styles.dropdownButton,
+                    styles.field,
+                    styles.currencyField,
                   ]}
-                  onPress={() =>
-                    setShowCurrencyDropdown(
-                      (previous) => !previous
-                    )
-                  }
                 >
-                  <Text style={styles.dropdownValue}>
-                    {currency}
-                  </Text>
+                  <Text style={styles.label}>Currency</Text>
 
-                  <Ionicons
-                    name={
-                      showCurrencyDropdown
-                        ? "chevron-up"
-                        : "chevron-down"
+                  <Pressable
+                    style={[
+                      styles.input,
+                      styles.dropdownButton,
+                    ]}
+                    onPress={() =>
+                      setShowCurrencyDropdown(
+                        (previous) => !previous
+                      )
                     }
-                    size={18}
-                    color={Colors.textSecondary}
-                  />
-                </Pressable>
+                  >
+                    <Text style={styles.dropdownValue}>
+                      {currency}
+                    </Text>
 
-                {showCurrencyDropdown && (
-                  <View style={styles.dropdownMenu}>
-                    {CURRENCIES.map((item) => {
-                      const isSelected = item === currency;
+                    <Ionicons
+                      name={
+                        showCurrencyDropdown
+                          ? "chevron-up"
+                          : "chevron-down"
+                      }
+                      size={18}
+                      color={Colors.textSecondary}
+                    />
+                  </Pressable>
 
-                      return (
-                        <Pressable
-                          key={item}
-                          style={({ pressed }) => [
-                            styles.currencyOption,
-                            pressed &&
-                              styles.currencyOptionPressed,
-                            isSelected &&
-                              styles.currencyOptionSelected,
-                          ]}
-                          onPress={() => {
-                            setCurrency(item);
-                            setShowCurrencyDropdown(false);
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.currencyOptionText,
+                  {showCurrencyDropdown && (
+                    <View style={styles.dropdownMenu}>
+                      {CURRENCIES.map((item) => {
+                        const isSelected =
+                          item === currency;
+
+                        return (
+                          <Pressable
+                            key={item}
+                            style={({ pressed }) => [
+                              styles.currencyOption,
+                              pressed &&
+                                styles.currencyOptionPressed,
                               isSelected &&
-                                styles.currencyOptionTextSelected,
+                                styles.currencyOptionSelected,
                             ]}
+                            onPress={() => {
+                              setCurrency(item);
+                              setShowCurrencyDropdown(false);
+                            }}
                           >
-                            {item}
-                          </Text>
+                            <Text
+                              style={[
+                                styles.currencyOptionText,
+                                isSelected &&
+                                  styles.currencyOptionTextSelected,
+                              ]}
+                            >
+                              {item}
+                            </Text>
 
-                          {isSelected && (
-                            <Ionicons
-                              name="checkmark"
-                              size={18}
-                              color={Colors.text}
-                            />
-                          )}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                )}
-              </View>
+                            {isSelected && (
+                              <Ionicons
+                                name="checkmark"
+                                size={18}
+                                color={
+                                  Colors.primary ??
+                                  "#4F46E5"
+                                }
+                              />
+                            )}
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
 
-              {/* Opening balance */}
-              <View style={styles.field}>
-                <Text style={styles.label}>
-                  Opening balance
-                </Text>
-
-                <View style={styles.balanceInputWrapper}>
-                  <Text style={styles.currencyPrefix}>
-                    {currency}
+                <View
+                  style={[
+                    styles.field,
+                    styles.balanceField,
+                  ]}
+                >
+                  <Text style={styles.label}>
+                    Opening balance
                   </Text>
 
-                  <TextInput
-                    value={openingBalance}
-                    onChangeText={setOpeningBalance}
-                    placeholder="0.00"
-                    placeholderTextColor={Colors.textSecondary}
-                    style={styles.balanceInput}
-                    keyboardType="decimal-pad"
-                    returnKeyType="done"
-                  />
+                  <View
+                    style={styles.balanceInputWrapper}
+                  >
+                    <Text style={styles.currencyPrefix}>
+                      {currency}
+                    </Text>
+
+                    <TextInput
+                      value={openingBalance}
+                      onChangeText={setOpeningBalance}
+                      placeholder="0.00"
+                      placeholderTextColor={
+                        Colors.textSecondary
+                      }
+                      style={styles.balanceInput}
+                      keyboardType="decimal-pad"
+                      returnKeyType="done"
+                    />
+                  </View>
                 </View>
               </View>
 
-              {/* Color */}
               <View style={styles.field}>
                 <Text style={styles.label}>Color</Text>
 
@@ -492,13 +713,12 @@ export default function AccountsSettingsPage() {
                     return (
                       <Pressable
                         key={color}
-                        style={[
-                          styles.colorOption,
-                          {
-                            backgroundColor: color,
-                          },
+                        style={({ pressed }) => [
+                          styles.colorOptionOuter,
                           isSelected &&
                             styles.colorOptionSelected,
+                          pressed &&
+                            styles.colorOptionPressed,
                         ]}
                         onPress={() =>
                           setSelectedColor(color)
@@ -506,11 +726,21 @@ export default function AccountsSettingsPage() {
                         accessibilityRole="button"
                         accessibilityLabel={`Select color ${color}`}
                       >
+                        <View
+                          style={[
+                            styles.colorOption,
+                            {
+                              backgroundColor: color,
+                            },
+                          ]}
+                        />
+
                         {isSelected && (
                           <Ionicons
                             name="checkmark"
-                            size={18}
+                            size={16}
                             color="#FFFFFF"
+                            style={styles.colorCheck}
                           />
                         )}
                       </Pressable>
@@ -519,27 +749,36 @@ export default function AccountsSettingsPage() {
                 </View>
               </View>
 
-              {/* Add */}
               <Pressable
                 style={({ pressed }) => [
-                  styles.modalAddButton,
-                  pressed &&
-                    styles.modalAddButtonPressed,
+                  styles.modalSaveButton,
+                  pressed && styles.modalSaveButtonPressed,
                   isSaving &&
-                    styles.modalAddButtonDisabled,
+                    styles.modalSaveButtonDisabled,
                 ]}
                 onPress={handleSaveAccount}
                 disabled={isSaving}
               >
-                <Text style={styles.modalAddButtonText}>
-                  {isSaving
-                    ? editingAccountId === null
-                      ? "Adding..."
-                      : "Saving..."
-                    : editingAccountId === null
-                      ? "Add account"
-                      : "Save changes"}
-                </Text>
+                {isSaving ? (
+                  <>
+                    <ActivityIndicator
+                      size="small"
+                      color="#FFFFFF"
+                    />
+
+                    <Text style={styles.modalSaveButtonText}>
+                      {isEditing
+                        ? "Saving..."
+                        : "Adding..."}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.modalSaveButtonText}>
+                    {isEditing
+                      ? "Save changes"
+                      : "Add account"}
+                  </Text>
+                )}
               </Pressable>
             </ScrollView>
           </View>
@@ -579,15 +818,10 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
   },
 
+  /* Page intro */
+
   header: {
     marginBottom: Spacing.xl,
-  },
-
-  title: {
-    fontSize: Typography.title,
-    fontWeight: "700",
-    color: Colors.text,
-    marginBottom: Spacing.sm,
   },
 
   subtitle: {
@@ -601,117 +835,239 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: Spacing.xxxl,
+    paddingTop: 55,
+    paddingHorizontal: 20,
   },
 
   emptyIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: Colors.textSecondary,
+    width: 54,
+    height: 54,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: Spacing.md,
+    backgroundColor:
+      Colors.surface ?? "rgba(0, 0, 0, 0.04)",
+    marginBottom: 16,
   },
 
   emptyTitle: {
-    fontSize: Typography.body,
-    fontWeight: "600",
+    fontSize: 18,
+    fontWeight: "700",
     color: Colors.text,
-    marginBottom: Spacing.xs,
+    marginBottom: 7,
   },
 
   emptyDescription: {
-    fontSize: Typography.body,
-    color: Colors.textSecondary,
-  },
-
-  /* Account list */
-
-  accountList: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor:
-      Colors.border ?? Colors.textSecondary,
-  },
-
-  accountRow: {
-    minHeight: 76,
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor:
-      Colors.border ?? Colors.textSecondary,
-  },
-
-  accountIndicator: {
-    width: 4,
-    height: 42,
-    borderRadius: 2,
-    marginRight: Spacing.md,
-  },
-
-  accountInfo: {
-    flex: 1,
-    minWidth: 0,
-    paddingVertical: Spacing.md,
-  },
-
-  accountName: {
-    fontSize: Typography.body,
-    fontWeight: "600",
-    color: Colors.text,
-    marginBottom: 4,
-  },
-
-  accountMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  accountType: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    textTransform: "capitalize",
-  },
-
-  metaSeparator: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginHorizontal: 6,
-  },
-
-  accountCurrency: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-  },
-
-  accountRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: Spacing.md,
-  },
-
-  balance: {
+    maxWidth: 310,
+    textAlign: "center",
     fontSize: 14,
-    fontWeight: "600",
-    color: Colors.text,
-    marginRight: Spacing.sm,
+    lineHeight: 21,
+    color: Colors.textSecondary,
+    marginBottom: 22,
+  },
+
+  emptyAddButton: {
+    height: 48,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    backgroundColor: Colors.primary ?? "#4F46E5",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+  },
+
+  emptyAddButtonPressed: {
+    opacity: 0.85,
+  },
+
+  emptyAddButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  /* Account section */
+
+  accountSection: {
+    marginTop: 2,
+  },
+
+sectionHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: 10,
+},
+
+sectionTitle: {
+  fontSize: 13,
+  fontWeight: "700",
+  color: Colors.textSecondary,
+  textTransform: "uppercase",
+  letterSpacing: 0.6,
+},
+
+accountCount: {
+  minWidth: 24,
+  height: 24,
+  paddingHorizontal: 7,
+  borderRadius: 12,
+  textAlign: "center",
+  textAlignVertical: "center",
+  fontSize: 11,
+  fontWeight: "700",
+  color: Colors.textSecondary,
+  backgroundColor:
+    Colors.surface ?? "rgba(0, 0, 0, 0.05)",
+},
+
+archivedSection: {
+  marginTop: 28,
+},
+
+accountList: {
+  gap: 10,
+},
+
+accountCard: {
+  minHeight: 82,
+  borderRadius: 16,
+  backgroundColor:
+    Colors.surface ?? "rgba(0, 0, 0, 0.025)",
+  borderWidth: 1,
+  borderColor:
+    Colors.border ?? "rgba(0, 0, 0, 0.08)",
+  flexDirection: "row",
+  alignItems: "center",
+  overflow: "hidden",
+},
+
+accountCardPressed: {
+  opacity: 0.78,
+},
+
+accountAccent: {
+  width: 4,
+  alignSelf: "stretch",
+},
+
+accountContent: {
+  flex: 1,
+  minWidth: 0,
+  flexDirection: "row",
+  alignItems: "center",
+  paddingLeft: 14,
+  paddingVertical: 14,
+},
+
+accountDetails: {
+  flex: 1,
+  minWidth: 0,
+  paddingRight: 10,
+},
+
+accountName: {
+  fontSize: 15,
+  fontWeight: "700",
+  color: Colors.text,
+  marginBottom: 5,
+},
+
+accountMeta: {
+  flexDirection: "row",
+  alignItems: "center",
+},
+
+accountType: {
+  fontSize: 12,
+  color: Colors.textSecondary,
+  textTransform: "capitalize",
+},
+
+metaDot: {
+  width: 3,
+  height: 3,
+  borderRadius: 2,
+  backgroundColor: Colors.textSecondary,
+  marginHorizontal: 7,
+  opacity: 0.6,
+},
+
+accountCurrency: {
+  fontSize: 12,
+  fontWeight: "600",
+  color: Colors.textSecondary,
+},
+
+accountAmount: {
+  alignItems: "flex-end",
+},
+
+balance: {
+  fontSize: 14,
+  fontWeight: "700",
+  color: Colors.text,
+},
+
+balanceCaption: {
+  fontSize: 10,
+  color: Colors.textSecondary,
+  marginTop: 3,
+},
+
+chevron: {
+  marginHorizontal: 5,
+  opacity: 0.5,
+},
+
+/* Archived */
+
+  archivedAccountCard: {
+    backgroundColor:
+      Colors.surface ?? "rgba(0, 0, 0, 0.018)",
+    borderColor:
+      Colors.border ?? "rgba(0, 0, 0, 0.055)",
+  },
+
+  archivedAccent: {
+    opacity: 0.45,
+  },
+
+  archivedAccountName: {
+    color: Colors.textSecondary,
+  },
+
+  archivedText: {
+    opacity: 0.7,
+  },
+
+  archivedDot: {
+    opacity: 0.35,
+  },
+
+  archivedBalance: {
+    color: Colors.textSecondary,
+  },
+
+  archivedChevron: {
+    opacity: 0.3,
   },
 
   deleteButton: {
-    width: 38,
-    height: 38,
+    width: 45,
+    height: 45,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 19,
+    marginRight: 7,
   },
 
   deleteButtonPressed: {
-    backgroundColor: "rgba(255, 0, 0, 0.08)",
+    backgroundColor: "rgba(217, 83, 79, 0.10)",
   },
 
-  /* Fixed bottom button */
+  /* Bottom action */
 
   bottomAction: {
     position: "absolute",
@@ -719,32 +1075,32 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingTop: 12,
     paddingBottom:
       Platform.OS === "ios" ? Spacing.xl : Spacing.lg,
     backgroundColor: Colors.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor:
-      Colors.border ?? Colors.textSecondary,
+      Colors.border ?? "rgba(0, 0, 0, 0.08)",
   },
 
   addButton: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: 15,
     backgroundColor: Colors.primary ?? "#4F46E5",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 7,
   },
 
   addButtonPressed: {
-    opacity: 0.85,
+    opacity: 0.86,
   },
 
   addButtonText: {
     color: "#FFFFFF",
-    fontSize: Typography.body,
+    fontSize: 15,
     fontWeight: "700",
   },
 
@@ -762,28 +1118,33 @@ const styles = StyleSheet.create({
 
   modalContainer: {
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     maxHeight: "92%",
-    paddingTop: Spacing.sm,
+    paddingTop: 8,
+    overflow: "hidden",
   },
 
   modalHandle: {
     width: 38,
     height: 4,
-    borderRadius: 2,
+    borderRadius: 4,
     alignSelf: "center",
     backgroundColor: Colors.textSecondary,
-    opacity: 0.4,
-    marginBottom: Spacing.md,
+    opacity: 0.3,
+    marginBottom: 15,
   },
 
   modalHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    justifyContent: "space-between",
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingBottom: 17,
+  },
+
+  modalHeaderText: {
+    flex: 1,
+    paddingRight: 12,
   },
 
   modalTitle: {
@@ -797,49 +1158,69 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 19,
-    maxWidth: 290,
   },
 
   closeButton: {
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor:
       Colors.surface ?? "rgba(0, 0, 0, 0.05)",
   },
 
-  formContent: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
-    paddingBottom: 36,
+  closeButtonPressed: {
+    opacity: 0.6,
   },
 
-  /* Form fields */
+  formContent: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: 2,
+    paddingBottom: 34,
+  },
+
+  /* Form */
 
   field: {
-    marginBottom: Spacing.lg,
+    marginBottom: 18,
   },
 
   label: {
     fontSize: 13,
     fontWeight: "600",
     color: Colors.text,
-    marginBottom: Spacing.sm,
+    marginBottom: 8,
   },
 
   input: {
     minHeight: 50,
     borderWidth: 1,
     borderColor:
-      Colors.border ?? "rgba(0, 0, 0, 0.12)",
-    borderRadius: 12,
+      Colors.border ?? "rgba(0, 0, 0, 0.11)",
+    borderRadius: 13,
     paddingHorizontal: 14,
     fontSize: 15,
     color: Colors.text,
     backgroundColor:
       Colors.surface ?? "rgba(0, 0, 0, 0.025)",
+  },
+
+  /* Currency / balance */
+
+  formRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+
+  currencyField: {
+    flex: 0.85,
+    minWidth: 0,
+  },
+
+  balanceField: {
+    flex: 1.15,
+    minWidth: 0,
   },
 
   dropdownButton: {
@@ -851,21 +1232,33 @@ const styles = StyleSheet.create({
   dropdownValue: {
     fontSize: 15,
     color: Colors.text,
-    fontWeight: "500",
+    fontWeight: "600",
   },
 
   dropdownMenu: {
-    marginTop: 6,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 78,
+    zIndex: 20,
     borderWidth: 1,
     borderColor:
-      Colors.border ?? "rgba(0, 0, 0, 0.12)",
-    borderRadius: 12,
+      Colors.border ?? "rgba(0, 0, 0, 0.11)",
+    borderRadius: 13,
     overflow: "hidden",
     backgroundColor: Colors.background,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    elevation: 7,
   },
 
   currencyOption: {
-    minHeight: 46,
+    minHeight: 44,
     paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
@@ -879,7 +1272,7 @@ const styles = StyleSheet.create({
 
   currencyOptionSelected: {
     backgroundColor:
-      Colors.surface ?? "rgba(0, 0, 0, 0.04)",
+      Colors.surface ?? "rgba(0, 0, 0, 0.035)",
   },
 
   currencyOptionText: {
@@ -888,10 +1281,8 @@ const styles = StyleSheet.create({
   },
 
   currencyOptionTextSelected: {
-    fontWeight: "600",
+    fontWeight: "700",
   },
-
-  /* Balance */
 
   balanceInputWrapper: {
     minHeight: 50,
@@ -899,17 +1290,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor:
-      Colors.border ?? "rgba(0, 0, 0, 0.12)",
-    borderRadius: 12,
+      Colors.border ?? "rgba(0, 0, 0, 0.11)",
+    borderRadius: 13,
     backgroundColor:
       Colors.surface ?? "rgba(0, 0, 0, 0.025)",
   },
 
   currencyPrefix: {
-    paddingLeft: 14,
-    paddingRight: 8,
-    fontSize: 14,
-    fontWeight: "600",
+    paddingLeft: 13,
+    paddingRight: 5,
+    fontSize: 12,
+    fontWeight: "700",
     color: Colors.textSecondary,
   },
 
@@ -921,55 +1312,63 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
 
-  /* Colors */
+  /* Color */
 
   colorGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 13,
   },
 
-  colorOption: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  colorOptionOuter: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
 
   colorOptionSelected: {
-    borderWidth: 3,
-    borderColor: Colors.background,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    elevation: 3,
+    borderWidth: 2,
+    borderColor: Colors.text,
   },
 
-  /* Modal add button */
+  colorOptionPressed: {
+    opacity: 0.7,
+  },
 
-  modalAddButton: {
+  colorOption: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+  },
+
+  colorCheck: {
+    position: "absolute",
+  },
+
+  /* Modal CTA */
+
+  modalSaveButton: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: 15,
     backgroundColor: Colors.primary ?? "#4F46E5",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: Spacing.sm,
+    gap: 8,
+    marginTop: 3,
   },
 
-  modalAddButtonPressed: {
-    opacity: 0.85,
+  modalSaveButtonPressed: {
+    opacity: 0.86,
   },
 
-  modalAddButtonDisabled: {
-    opacity: 0.5,
+  modalSaveButtonDisabled: {
+    opacity: 0.55,
   },
 
-  modalAddButtonText: {
+  modalSaveButtonText: {
     color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "700",

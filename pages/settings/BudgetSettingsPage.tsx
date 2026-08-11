@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Modal,
   TextInput,
   Platform,
   Pressable,
@@ -8,7 +7,7 @@ import {
   StyleSheet,
   Text,
   View,
-  GestureResponderEvent,
+  LayoutRectangle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -16,7 +15,7 @@ import DateTimePicker, {
   DateTimePickerAndroid,
 } from "@react-native-community/datetimepicker";
 
-import SettingsCard from "../../components/settings/SettingsCard";
+import SettingsDropdown from "../../components/settings/SettingsDropdown";
 
 import { Colors } from "../../constants/colors";
 import { Spacing } from "../../constants/spacing";
@@ -139,7 +138,6 @@ export default function BudgetSettingsPage() {
 
   const [budgetCycle, setBudgetCycle] =
     useState<BudgetCycle>("Monthly");
-
   const [isBudgetCycleOpen, setIsBudgetCycleOpen] =
     useState(false);
 
@@ -147,10 +145,7 @@ export default function BudgetSettingsPage() {
     useState(false);
 
   const [dropdownPosition, setDropdownPosition] =
-    useState({
-      top: 0,
-      right: 16,
-    });
+    useState<LayoutRectangle | undefined>(undefined);
 
   const nextBudgetDate = useMemo(
     () =>
@@ -185,25 +180,9 @@ export default function BudgetSettingsPage() {
     setIsBudgetDatePickerOpen(true);
   };
 
-  const openBudgetCycleDropdown = (
-    event: GestureResponderEvent
-  ) => {
-    event.currentTarget.measureInWindow(
-      (_x, y, _width, height) => {
-        setDropdownPosition({
-          top: y + height + 4,
-          right: 16,
-        });
-
-        setIsBudgetCycleOpen(
-          (previous) => !previous
-        );
-      }
-    );
-  };
-
   const closeBudgetCycleDropdown = () => {
     setIsBudgetCycleOpen(false);
+    setDropdownPosition(undefined);
   };
 
   const handleCycleChange = (
@@ -226,10 +205,19 @@ export default function BudgetSettingsPage() {
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onTouchStart={() => {
+        if (isBudgetCycleOpen) {
+          closeBudgetCycleDropdown();
+        }
+      }}
+    >
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={closeBudgetCycleDropdown}
+        scrollEventThrottle={16}
       >
         <Text style={styles.description}>
           Manage when your budget starts and how often
@@ -262,173 +250,134 @@ export default function BudgetSettingsPage() {
               {formatDate(nextBudgetDate)}
             </Text>
           </View>
-
-          {/* BUDGET DATE */}
-          <SettingsCard
-            title="Budget Date"
-            description="The date your budget period starts"
-          >
-            <Pressable
-              onPress={openBudgetDatePicker}
-              style={({ pressed }) => [
-                styles.dateControl,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.dateControlText}>
-                {formatDate(budgetDate)}
-              </Text>
-
-              <View style={styles.calendarIconContainer}>
-                <Ionicons
-                  name="calendar-outline"
-                  size={18}
-                  color={Colors.primary}
-                />
+          {/* Settings rows */}
+          <SettingsSection title="Budget">
+            <View style={styles.row}>
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>Budget date</Text>
+                <Text style={styles.rowDescription}>
+                  The date your budget period starts
+                </Text>
               </View>
-            </Pressable>
-          </SettingsCard>
+
+              <Pressable
+                onPress={openBudgetDatePicker}
+                style={({ pressed }) => [
+                  styles.dateControl,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.dateControlText}>
+                  {formatDate(budgetDate)}
+                </Text>
+
+                <View style={styles.calendarIconContainer}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={18}
+                    color={Colors.primary}
+                  />
+                </View>
+              </Pressable>
+            </View>
+
+            <Divider />
+
+            <View style={styles.row}>
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>Budget cycle</Text>
+                <Text style={styles.rowDescription}>
+                  Choose how often your budget resets
+                </Text>
+              </View>
+
+              <SettingsDropdown
+                value={budgetCycle}
+                options={budgetCycleOptions.map((c) => ({
+                  label: c,
+                  value: c,
+                }))}
+                open={isBudgetCycleOpen}
+                position={dropdownPosition}
+                onOpen={(layout) => {
+                  setDropdownPosition(layout);
+                  setIsBudgetCycleOpen(true);
+                }}
+                onSelect={(value) => handleCycleChange(value as BudgetCycle)}
+                onClose={closeBudgetCycleDropdown}
+              />
+            </View>
+
+            <Divider />
+
+            <View style={styles.row}>
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>Overall budget</Text>
+                <Text style={styles.rowDescription}>
+                  Set your total budget
+                </Text>
+              </View>
+
+              <TextInput
+                value={overallBudget}
+                onChangeText={setOverallBudget}
+                placeholder="0.00"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="decimal-pad"
+                style={styles.rowInput}
+              />
+            </View>
+          </SettingsSection>
 
           {/* IOS BUDGET DATE PICKER */}
-          {Platform.OS === "ios" &&
-            isBudgetDatePickerOpen && (
-              <View style={styles.iosPickerContainer}>
-                <DateTimePicker
-                  value={budgetDate}
-                  mode="date"
-                  display="spinner"
-                  onChange={(_event, selectedDate) => {
-                    if (selectedDate) {
-                      setBudgetDate(selectedDate);
-                    }
-                  }}
-                  minimumDate={new Date()}
-                />
-
-                <Pressable
-                  onPress={() =>
-                    setIsBudgetDatePickerOpen(false)
+          {Platform.OS === "ios" && isBudgetDatePickerOpen && (
+            <View style={styles.iosPickerContainer}>
+              <DateTimePicker
+                value={budgetDate}
+                mode="date"
+                display="spinner"
+                onChange={(_event, selectedDate) => {
+                  if (selectedDate) {
+                    setBudgetDate(selectedDate);
                   }
-                  style={styles.doneButton}
-                >
-                  <Text style={styles.doneButtonText}>
-                    Done
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-
-          {/* BUDGET CYCLE */}
-          <SettingsCard
-            title="Budget Cycle"
-            description="Choose how often your budget resets"
-          >
-            <Pressable
-              onPress={openBudgetCycleDropdown}
-              style={({ pressed }) => [
-                styles.dropdown,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.dropdownText}>
-                {budgetCycle}
-              </Text>
-
-              <Ionicons
-                name={
-                  isBudgetCycleOpen
-                    ? "chevron-up"
-                    : "chevron-down"
-                }
-                size={18}
-                color={Colors.textSecondary}
+                }}
+                minimumDate={new Date()}
               />
-            </Pressable>
-          </SettingsCard>
 
-          {/* OVERALL BUDGET */}
-          <SettingsCard
-            title="Overall Budget"
-            description="Set your total budget"
-          >
-            <TextInput
-              value={overallBudget}
-              onChangeText={setOverallBudget}
-              placeholder="0.00"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="decimal-pad"
-              style={styles.input}
-            />
-          </SettingsCard>
+              <Pressable
+                onPress={() => setIsBudgetDatePickerOpen(false)}
+                style={styles.doneButton}
+              >
+                <Text style={styles.doneButtonText}>Done</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </ScrollView>
 
-      {/* BUDGET CYCLE DROPDOWN */}
-      <Modal
-        visible={isBudgetCycleOpen}
-        transparent
-        animationType="none"
-        onRequestClose={closeBudgetCycleDropdown}
-      >
-        <View style={styles.modalContainer}>
-
-          {/* OUTSIDE TOUCH */}
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={closeBudgetCycleDropdown}
-          />
-
-          {/* DROPDOWN */}
-          <View
-            style={[
-              styles.dropdownOptions,
-              {
-                top: dropdownPosition.top,
-                right: dropdownPosition.right,
-              },
-            ]}
-          >
-            {budgetCycleOptions.map((option) => {
-              const isSelected =
-                option === budgetCycle;
-
-              return (
-                <Pressable
-                  key={option}
-                  onPress={() =>
-                    handleCycleChange(option)
-                  }
-                  style={[
-                    styles.dropdownOption,
-                    isSelected &&
-                      styles.dropdownOptionSelected,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.dropdownOptionText,
-                      isSelected &&
-                        styles.dropdownOptionTextSelected,
-                    ]}
-                  >
-                    {option}
-                  </Text>
-
-                  {isSelected && (
-                    <Ionicons
-                      name="checkmark"
-                      size={18}
-                      color={Colors.primary}
-                    />
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-      </Modal>
+      {/* Dropdown is rendered by `SettingsDropdown` inside the card trigger */}
     </View>
   );
+}
+
+function SettingsSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+
+      <View style={styles.sectionCard}>{children}</View>
+    </View>
+  );
+}
+
+function Divider() {
+  return <View style={styles.divider} />;
 }
 
 const styles = StyleSheet.create({
@@ -451,6 +400,79 @@ const styles = StyleSheet.create({
 
   settingsList: {
     gap: Spacing.md,
+  },
+
+  /* Sections */
+  section: {
+    marginTop: Spacing.lg,
+  },
+
+  sectionTitle: {
+    marginLeft: 4,
+    marginBottom: 7,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+
+  sectionCard: {
+    overflow: "visible",
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+
+  /* Rows */
+  row: {
+    minHeight: 70,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+
+    flexDirection: "row",
+    alignItems: "center",
+
+    zIndex: 1,
+  },
+
+  rowContent: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: Spacing.sm,
+  },
+
+  rowTitle: {
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: "600",
+    color: Colors.text,
+    marginBottom: 2,
+  },
+
+  rowDescription: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: Colors.textSecondary,
+  },
+
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: Spacing.md,
+    backgroundColor: Colors.border,
+  },
+
+  rowInput: {
+    minWidth: 100,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.surface,
+    padding: 10,
+    fontSize: 16,
+    textAlign: 'right',
   },
 
   pressed: {
