@@ -29,7 +29,7 @@ export default function TabsLayout() {
 
   let headerTitle = formatTitle(route);
 
-  if (route === "tabs") {
+  if (route === "(tabs)") {
     // Replace "John" with your actual user's name
     headerTitle = getGreeting("Sai");
   } else if (route === "create") {
