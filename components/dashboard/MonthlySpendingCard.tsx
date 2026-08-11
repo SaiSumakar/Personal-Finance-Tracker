@@ -6,10 +6,6 @@ type Props = {
   isIncrease: boolean;
   topCategory?: string;
   topCategoryAmount?: number;
-
-  // Actual weekly spending data.
-  // Example: [1200, 1800, 1400, 2300]
-  weeklySpending?: number[];
 };
 
 function formatCurrency(value: number) {
@@ -24,20 +20,11 @@ export default function MonthlySpendingCard({
   isIncrease,
   topCategory = "Food",
   topCategoryAmount = 0,
-  weeklySpending = [],
 }: Props) {
   const accentColor = isIncrease ? "#DC2626" : "#15803D";
   const accentBackground = isIncrease
     ? "#FEF2F2"
     : "#F0FDF4";
-
-  const maxWeeklySpending =
-    weeklySpending.length > 0
-      ? Math.max(...weeklySpending)
-      : 0;
-
-  const hasChartData =
-    weeklySpending.length > 0 && maxWeeklySpending > 0;
 
   return (
     <View style={styles.card}>
@@ -120,61 +107,6 @@ export default function MonthlySpendingCard({
             : "You're spending less than last month"}
         </Text>
       </View> */}
-
-      {/* Weekly trend */}
-      {hasChartData && (
-        <View style={styles.trendSection}>
-          <View style={styles.trendHeader}>
-            <Text style={styles.sectionLabel}>
-              Weekly spending
-            </Text>
-
-            <Text style={styles.trendHint}>
-              {weeklySpending.length} weeks
-            </Text>
-          </View>
-
-          <View style={styles.chart}>
-            {weeklySpending.map((value, index) => {
-              const height =
-                (value / maxWeeklySpending) * 48;
-
-              const isLast =
-                index === weeklySpending.length - 1;
-
-              return (
-                <View
-                  key={index}
-                  style={styles.barWrapper}
-                >
-                  <View
-                    style={[
-                      styles.bar,
-                      {
-                        height: Math.max(height, 5),
-                        backgroundColor: isLast
-                          ? accentColor
-                          : "#CBD5E1",
-                      },
-                    ]}
-                  />
-                </View>
-              );
-            })}
-          </View>
-
-          <View style={styles.chartLabels}>
-            {weeklySpending.map((_, index) => (
-              <Text
-                key={index}
-                style={styles.chartLabel}
-              >
-                W{index + 1}
-              </Text>
-            ))}
-          </View>
-        </View>
-      )}
 
       {/* Top category */}
       <View style={styles.footer}>
@@ -354,83 +286,6 @@ const styles = StyleSheet.create({
     color: "#64748B",
 
     lineHeight: 16,
-  },
-
-  /* Trend */
-
-  trendSection: {
-    marginTop: 18,
-    marginBottom: 17,
-  },
-
-  trendHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-
-    marginBottom: 9,
-  },
-
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-
-    color: "#64748B",
-  },
-
-  trendHint: {
-    fontSize: 10,
-    fontWeight: "500",
-
-    color: "#CBD5E1",
-  },
-
-  chart: {
-    height: 52,
-
-    flexDirection: "row",
-    alignItems: "flex-end",
-
-    justifyContent: "space-between",
-
-    paddingHorizontal: 3,
-
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-
-  barWrapper: {
-    flex: 1,
-
-    height: 52,
-
-    alignItems: "center",
-    justifyContent: "flex-end",
-  },
-
-  bar: {
-    width: 18,
-
-    minHeight: 5,
-
-    borderRadius: 5,
-  },
-
-  chartLabels: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-
-    paddingHorizontal: 1,
-
-    marginTop: 6,
-  },
-
-  chartLabel: {
-    fontSize: 9,
-
-    color: "#A1A1AA",
-
-    textAlign: "center",
   },
 
   /* Footer */

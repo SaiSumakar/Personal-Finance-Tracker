@@ -31,7 +31,6 @@ export default function DashboardPage() {
         amount={18450}
         change={8.2}
         isIncrease
-        description="Compared to last month"
       />
       <BudgetCard
         totalBudget={30000}
