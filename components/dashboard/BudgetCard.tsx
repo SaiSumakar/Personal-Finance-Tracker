@@ -4,76 +4,279 @@ type Props = {
   totalBudget: number;
   spent: number;
   remaining: number;
+  daysRemaining?: number;
 };
 
-export default function BudgetCard({ totalBudget, spent, remaining }: Props) {
-  const progress = Math.min(Math.max(spent / totalBudget, 0), 1);
+function formatCurrency(value: number) {
+  return `₹${Math.abs(value).toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+export default function BudgetCard({
+  totalBudget,
+  spent,
+  remaining,
+  daysRemaining = 12,
+}: Props) {
+  const safeBudget = Math.max(totalBudget, 0);
+
+  const rawPercentage =
+    safeBudget > 0
+      ? (spent / safeBudget) * 100
+      : 0;
+
+  const percentage = Math.round(rawPercentage);
+
+  const progress = Math.min(
+    Math.max(rawPercentage, 0),
+    100
+  );
+
+  const isOverBudget = rawPercentage > 100;
+  const isNearLimit =
+    rawPercentage >= 80 && !isOverBudget;
+
+  const accentColor = isOverBudget
+    ? "#DC2626"
+    : isNearLimit
+      ? "#D97706"
+      : "#2563EB";
+
+  const accentBackground = isOverBudget
+    ? "#FEF2F2"
+    : isNearLimit
+      ? "#FFFBEB"
+      : "#EFF6FF";
 
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>Monthly Budget</Text>
-      <View style={styles.budgetRow}>
-        <Text style={styles.budgetAmount}>₹{spent.toLocaleString()}</Text>
-        <Text style={styles.budgetTotal}>/ ₹{totalBudget.toLocaleString()}</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>
+            Monthly Budget
+          </Text>
+
+          <Text style={styles.subtitle}>
+            Your limit this month
+          </Text>
+        </View>
+
+        <View
+          style={[
+            styles.daysBadge,
+            {
+              backgroundColor: accentBackground,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.daysValue,
+              {
+                color: accentColor,
+              },
+            ]}
+          >
+            {daysRemaining}
+          </Text>
+
+          <Text
+            style={[
+              styles.daysLabel,
+              {
+                color: accentColor,
+              },
+            ]}
+          >
+            days left
+          </Text>
+        </View>
       </View>
+
+      {/* Remaining */}
+      <View style={styles.remainingSection}>
+        <Text style={styles.remainingLabel}>
+          {isOverBudget
+            ? "Over budget by"
+            : "Remaining"}
+        </Text>
+
+        <Text
+          style={[
+            styles.remainingAmount,
+            {
+              color: isOverBudget
+                ? accentColor
+                : "#111827",
+            },
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {formatCurrency(remaining)}
+        </Text>
+      </View>
+
+      {/* Progress info */}
+      <View style={styles.progressHeader}>
+        <Text style={styles.percentText}>
+          {percentage}% spent
+        </Text>
+
+        <Text style={styles.limitText}>
+          {formatCurrency(totalBudget)} limit
+        </Text>
+      </View>
+
+      {/* Progress bar */}
       <View style={styles.progressBackground}>
-        <View style={[styles.progressBar, { width: `${progress * 100}%` }]} />
+        <View
+          style={[
+            styles.progressBar,
+            {
+              width: `${progress}%`,
+              backgroundColor: accentColor,
+            },
+          ]}
+        />
       </View>
-      <Text style={styles.remainingText}>₹{remaining.toLocaleString()} remaining</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+
+    padding: 18,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+
     borderWidth: 1,
-    borderColor: "rgba(15, 23, 42, 0.05)",
+    borderColor: "#E5E7EB",
+
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+
+    elevation: 3,
   },
-  cardTitle: {
-    fontSize: 16,
+
+  /* Header */
+
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+
+    marginBottom: 20,
+  },
+
+  title: {
+    fontSize: 17,
     fontWeight: "700",
     color: "#111827",
-    marginBottom: 14,
+    letterSpacing: -0.2,
   },
-  budgetRow: {
+
+  subtitle: {
+    marginTop: 3,
+
+    fontSize: 11,
+    fontWeight: "500",
+
+    color: "#9CA3AF",
+  },
+
+  /* Days */
+
+  daysBadge: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    marginBottom: 16,
+    alignItems: "baseline",
+
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+
+    borderRadius: 10,
   },
-  budgetAmount: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#111827",
-  },
-  budgetTotal: {
-    marginLeft: 8,
+
+  daysValue: {
     fontSize: 14,
+    fontWeight: "800",
+  },
+
+  daysLabel: {
+    marginLeft: 4,
+
+    fontSize: 10,
     fontWeight: "600",
-    color: "#6B7280",
   },
+
+  /* Remaining */
+
+  remainingSection: {
+    marginBottom: 20,
+  },
+
+  remainingLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+
+    color: "#9CA3AF",
+
+    marginBottom: 3,
+  },
+
+  remainingAmount: {
+    fontSize: 34,
+    fontWeight: "800",
+
+    letterSpacing: -1,
+  },
+
+  /* Progress */
+
+  progressHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+
+    marginBottom: 8,
+  },
+
+  percentText: {
+    fontSize: 12,
+    fontWeight: "800",
+
+    color: "#374151",
+  },
+
+  limitText: {
+    fontSize: 11,
+    fontWeight: "600",
+
+    color: "#9CA3AF",
+  },
+
   progressBackground: {
-    height: 10,
-    backgroundColor: "#E5E7EB",
+    height: 9,
+
+    backgroundColor: "#F1F5F9",
+
     borderRadius: 999,
+
     overflow: "hidden",
-    marginBottom: 14,
   },
+
   progressBar: {
     height: "100%",
-    backgroundColor: "#2563EB",
+
     borderRadius: 999,
-  },
-  remainingText: {
-    fontSize: 14,
-    color: "#4B5563",
   },
 });
