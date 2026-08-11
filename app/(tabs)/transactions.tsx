@@ -1,4 +1,4 @@
-import TransactionPage from "../../pages/TransactionPage";
+import TransactionPage from "../../src/features/transactions/pages/TransactionPage";
 
 export default function Screen() {
   return <TransactionPage />;

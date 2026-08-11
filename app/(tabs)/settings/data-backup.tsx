@@ -1,4 +1,4 @@
-import DataBackupSettingsPage from "../../../pages/settings/DataSettingsPage";
+import DataBackupSettingsPage from "../../../src/features/settings/pages/DataSettingsPage";
 
 export default function DataBackupSettingsScreen() {
   return <DataBackupSettingsPage />

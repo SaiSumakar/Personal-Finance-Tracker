@@ -8,9 +8,9 @@ import {
   View,
 } from "react-native";
 
-import { Colors } from "../../../constants/colors";
-import { Spacing } from "../../../constants/spacing";
-import { Typography } from "../../../constants/typography";
+import { Colors } from "../../../src/theme/colors";
+import { Spacing } from "../../../src/theme/spacing";
+import { Typography } from "../../../src/theme/typography";
 
 type IoniconName = React.ComponentProps<
   typeof Ionicons

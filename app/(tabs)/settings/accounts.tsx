@@ -1,4 +1,4 @@
-import AccountsSettingsPage from "../../../pages/settings/AccountsSettingsPage";
+import AccountsSettingsPage from "../../../src/features/settings/pages/AccountsSettingsPage";
 
 export default function AccountsScreen() {
   return <AccountsSettingsPage />

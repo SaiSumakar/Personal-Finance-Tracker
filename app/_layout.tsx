@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Stack } from "expo-router";
-import { migrateDatabase } from "../db/migrations";
+import { migrateDatabase } from "../src/database/migrations";
 
 export default function RootLayout() {
 
