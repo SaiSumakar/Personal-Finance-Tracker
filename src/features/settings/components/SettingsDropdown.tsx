@@ -80,10 +80,22 @@ export default function SettingsDropdown({
           animationType="none"
           onRequestClose={onClose}
         >
-          <Pressable
-            style={styles.modalOverlay}
-            onPress={onClose}
+          <View
+            style={styles.modalContainer}
+            onTouchStart={(event) =>
+              event.stopPropagation()
+            }
           >
+            {/* Outside click area */}
+            <Pressable
+              style={styles.modalOverlay}
+              onPress={(event) => {
+                event.stopPropagation();
+                onClose();
+              }}
+            />
+
+            {/* Actual dropdown */}
             <View
               style={[
                 styles.menu,
@@ -111,6 +123,11 @@ export default function SettingsDropdown({
                     key={option.value}
                     onPress={(event) => {
                       event.stopPropagation();
+                      console.log(
+                        "OPTION PRESSED:",
+                        option.value
+                      );
+
                       onSelect(option.value);
                       onClose();
                     }}
@@ -118,7 +135,8 @@ export default function SettingsDropdown({
                       styles.option,
                       selected && styles.optionSelected,
                       pressed && styles.optionPressed,
-                      index === options.length - 1 && styles.lastOption,
+                      index === options.length - 1 &&
+                        styles.lastOption,
                     ]}
                   >
                     <Text
@@ -141,7 +159,7 @@ export default function SettingsDropdown({
                 );
               })}
             </View>
-          </Pressable>
+          </View>
         </Modal>
       )}
     </>
@@ -242,5 +260,9 @@ const styles = StyleSheet.create({
   modalOverlay: {
     ...StyleSheet.absoluteFill,
     backgroundColor: "transparent",
+  },
+
+  modalContainer: {
+    flex: 1,
   },
 });

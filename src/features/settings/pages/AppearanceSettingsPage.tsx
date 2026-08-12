@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Pressable,
   ScrollView,
@@ -8,11 +8,13 @@ import {
   View,
 } from "react-native";
 
-import { Colors } from "../../../theme/colors";
-import { Spacing } from "../../../theme/spacing";
-import { Typography } from "../../../theme/typography";
+import { Colors } from "@/theme/colors";
+import { Spacing } from "@/theme/spacing";
+import { Typography } from "@/theme/typography";
 
-type ThemeOption = "System" | "Light" | "Dark";
+import { useSettingsStore } from "../stores/settingsStore";
+
+type ThemeOption = "system" | "light" | "dark";
 
 const themeOptions: {
   value: ThemeOption;
@@ -21,19 +23,19 @@ const themeOptions: {
   description: string;
 }[] = [
   {
-    value: "System",
+    value: "system",
     label: "System",
     icon: "phone-portrait-outline",
     description: "Follow device",
   },
   {
-    value: "Light",
+    value: "light",
     label: "Light",
     icon: "sunny-outline",
     description: "Always light",
   },
   {
-    value: "Dark",
+    value: "dark",
     label: "Dark",
     icon: "moon-outline",
     description: "Always dark",
@@ -41,8 +43,20 @@ const themeOptions: {
 ];
 
 export default function AppearanceSettingsPage() {
-  const [theme, setTheme] =
-    useState<ThemeOption>("System");
+
+  const {
+    settings,
+    loading,
+    error,
+    loadSettings,
+    updateSettings
+  } = useSettingsStore();
+
+  const theme = settings.theme;
+  
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   return (
     <ScrollView
@@ -92,7 +106,9 @@ export default function AppearanceSettingsPage() {
                   option={option}
                   selected={selected}
                   onPress={() =>
-                    setTheme(option.value)
+                    updateSettings({
+                      theme: option.value,
+                    })
                   }
                 />
               );

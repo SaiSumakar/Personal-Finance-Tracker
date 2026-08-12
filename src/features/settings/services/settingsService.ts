@@ -118,7 +118,7 @@ class SettingsService {
       // Validate budget cycle
       if (
         dto.defaultBudgetCycle !== undefined &&
-        !["weekly", "monthly", "quarterly"].includes(
+        !["monthly", "quarterly", "yearly"].includes(
           dto.defaultBudgetCycle
         )
       ) {

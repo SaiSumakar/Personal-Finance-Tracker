@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutRectangle,
   Pressable,
@@ -11,9 +11,18 @@ import {
 
 import SettingsDropdown from "../components/SettingsDropdown";
 
-import { Colors } from "../../../theme/colors";
-import { Spacing } from "../../../theme/spacing";
-import { Typography } from "../../../theme/typography";
+import { Colors } from "@/theme/colors";
+import { Spacing } from "@/theme/spacing";
+import { Typography } from "@/theme/typography";
+
+import { useSettingsStore } from "../stores/settingsStore";
+import { useAccountStore } from "@/features/accounts/stores/accountStore";
+
+import { SUPPORTED_CURRENCIES } from "@/constants/currencies";
+import { SUPPORTED_DATE_FORMATS } from "@/constants/dateFormat";
+
+import type { Currency } from "@/constants/currencies";
+import type { DateFormat } from "@/constants/dateFormat";
 
 type DropdownType =
   | "transaction"
@@ -22,25 +31,18 @@ type DropdownType =
   | "dateFormat"
   | null;
 
-type TransactionType = "Expense" | "Income";
-type Currency = "INR" | "USD" | "GBP";
-type DateFormat = "DD/MM/YYYY" | "MM/DD/YYYY";
+type TransactionType = "expense" | "income";
 
 export default function TransactionSettingsPage() {
-  const [defaultTransaction, setDefaultTransaction] =
-    useState<TransactionType>("Expense");
+  const {
+    settings,
+    loading,
+    error,
+    loadSettings,
+    updateSettings,
+  } = useSettingsStore();
 
-  const [currency, setCurrency] =
-    useState<Currency>("INR");
-
-  const [defaultAccount, setDefaultAccount] =
-    useState("Cash");
-
-  const [dateFormat, setDateFormat] =
-    useState<DateFormat>("DD/MM/YYYY");
-
-  const [confirmBeforeDelete, setConfirmBeforeDelete] =
-    useState(true);
+  const { accounts, loadAccounts } = useAccountStore();
 
   const [openDropdown, setOpenDropdown] =
     useState<DropdownType>(null);
@@ -48,53 +50,40 @@ export default function TransactionSettingsPage() {
   const [dropdownPosition, setDropdownPosition] =
     useState<LayoutRectangle | undefined>();
 
+  useEffect(() => {
+    loadSettings();
+    loadAccounts();
+  }, [loadSettings, loadAccounts]);
+
   const transactionOptions = [
     {
       label: "Expense",
-      value: "Expense",
+      value: "expense" as const,
     },
     {
       label: "Income",
-      value: "Income",
+      value: "income" as const,
     },
   ];
 
-  const currencyOptions = [
-    {
-      label: "INR",
-      value: "INR",
-    },
-    {
-      label: "USD",
-      value: "USD",
-    },
-    {
-      label: "GBP",
-      value: "GBP",
-    },
-  ];
+  const currencyOptions = SUPPORTED_CURRENCIES.map(
+    (currency) => ({
+      label: currency,
+      value: currency,
+    })
+  );
 
-  const accountOptions = [
-    {
-      label: "Cash",
-      value: "Cash",
-    },
-    {
-      label: "UPI",
-      value: "UPI",
-    },
-  ];
+  const accountOptions = accounts.map((account) => ({
+    label: account.name,
+    value: String(account.id),
+  }));
 
-  const dateFormatOptions = [
-    {
-      label: "DD/MM/YYYY",
-      value: "DD/MM/YYYY",
-    },
-    {
-      label: "MM/DD/YYYY",
-      value: "MM/DD/YYYY",
-    },
-  ];
+  const dateFormatOptions = SUPPORTED_DATE_FORMATS.map(
+    (dateFormat) => ({
+      label: dateFormat,
+      value: dateFormat,
+    })
+  );
 
   const closeDropdown = () => {
     setOpenDropdown(null);
@@ -114,20 +103,28 @@ export default function TransactionSettingsPage() {
     setOpenDropdown(type);
   };
 
+  const selectedAccount = accounts.find(
+    (account) =>
+      account.id === settings.defaultAccountId
+  );
+
+  /*
+   * Show a loading state while the initial settings
+   * are being fetched from the database.
+   */
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>
+          Loading settings...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View
       style={styles.container}
-      onTouchStart={(event) => {
-        /*
-         * Only close when the user taps outside
-         * the currently open dropdown.
-         *
-         * The dropdown itself stops propagation.
-         */
-        if (openDropdown !== null) {
-          closeDropdown();
-        }
-      }}
     >
       <ScrollView
         contentContainerStyle={styles.content}
@@ -135,10 +132,19 @@ export default function TransactionSettingsPage() {
         onScrollBeginDrag={closeDropdown}
         scrollEventThrottle={16}
       >
+        {/* Error */}
+
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>
+              {error}
+            </Text>
+          </View>
+        )}
+
         {/* Header */}
 
         <View style={styles.header}>
-
           <Text style={styles.description}>
             Set preferences for adding and managing
             transactions.
@@ -148,6 +154,8 @@ export default function TransactionSettingsPage() {
         {/* Defaults */}
 
         <SettingsSection title="Defaults">
+          {/* Transaction type */}
+
           <View style={styles.row}>
             <View style={styles.rowContent}>
               <Text style={styles.rowTitle}>
@@ -160,7 +168,12 @@ export default function TransactionSettingsPage() {
             </View>
 
             <SettingsDropdown
-              value={defaultTransaction}
+              value={
+                settings.defaultTransactionType ===
+                "expense"
+                  ? "Expense"
+                  : "Income"
+              }
               options={transactionOptions}
               open={openDropdown === "transaction"}
               position={
@@ -174,16 +187,20 @@ export default function TransactionSettingsPage() {
                   layout
                 )
               }
-              onSelect={(value) =>
-                setDefaultTransaction(
-                  value as TransactionType
-                )
-              }
+              onSelect={(value) => {
+                console.log("🔵 PAGE SELECT:", value);
+
+                updateSettings({
+                  defaultTransactionType: value as TransactionType,
+                });
+              }}
               onClose={closeDropdown}
             />
           </View>
 
           <Divider />
+
+          {/* Default account */}
 
           <View style={styles.row}>
             <View style={styles.rowContent}>
@@ -197,7 +214,10 @@ export default function TransactionSettingsPage() {
             </View>
 
             <SettingsDropdown
-              value={defaultAccount}
+              value={
+                selectedAccount?.name ??
+                "None"
+              }
               options={accountOptions}
               open={openDropdown === "account"}
               position={
@@ -211,7 +231,11 @@ export default function TransactionSettingsPage() {
                   layout
                 )
               }
-              onSelect={setDefaultAccount}
+              onSelect={(value) =>
+                updateSettings({
+                  defaultAccountId: Number(value),
+                })
+              }
               onClose={closeDropdown}
             />
           </View>
@@ -220,6 +244,8 @@ export default function TransactionSettingsPage() {
         {/* Display */}
 
         <SettingsSection title="Display">
+          {/* Currency */}
+
           <View style={styles.row}>
             <View style={styles.rowContent}>
               <Text style={styles.rowTitle}>
@@ -232,7 +258,7 @@ export default function TransactionSettingsPage() {
             </View>
 
             <SettingsDropdown
-              value={currency}
+              value={settings.currency}
               options={currencyOptions}
               open={openDropdown === "currency"}
               position={
@@ -247,13 +273,17 @@ export default function TransactionSettingsPage() {
                 )
               }
               onSelect={(value) =>
-                setCurrency(value as Currency)
+                updateSettings({
+                  currency: value as Currency,
+                })
               }
               onClose={closeDropdown}
             />
           </View>
 
           <Divider />
+
+          {/* Date format */}
 
           <View style={styles.row}>
             <View style={styles.rowContent}>
@@ -263,14 +293,15 @@ export default function TransactionSettingsPage() {
 
               <Text style={styles.rowDescription}>
                 Example:{" "}
-                {dateFormat === "DD/MM/YYYY"
+                {settings.dateFormat ===
+                "dd/mm/yyyy"
                   ? "11/08/2026"
                   : "08/11/2026"}
               </Text>
             </View>
 
             <SettingsDropdown
-              value={dateFormat}
+              value={settings.dateFormat}
               options={dateFormatOptions}
               open={openDropdown === "dateFormat"}
               position={
@@ -285,7 +316,9 @@ export default function TransactionSettingsPage() {
                 )
               }
               onSelect={(value) =>
-                setDateFormat(value as DateFormat)
+                updateSettings({
+                  dateFormat: value as DateFormat,
+                })
               }
               onClose={closeDropdown}
             />
@@ -308,8 +341,14 @@ export default function TransactionSettingsPage() {
             </View>
 
             <Switch
-              value={confirmBeforeDelete}
-              onValueChange={setConfirmBeforeDelete}
+              value={
+                settings.confirmTransactionDelete
+              }
+              onValueChange={async (value) => {
+                await updateSettings({
+                  confirmTransactionDelete: value,
+                });
+              }}
               trackColor={{
                 false: Colors.border,
                 true: Colors.primary,
@@ -320,15 +359,6 @@ export default function TransactionSettingsPage() {
           </View>
         </SettingsSection>
       </ScrollView>
-
-      {/* Dropdown layer */}
-
-      {openDropdown !== null && (
-        <Pressable
-          style={styles.dropdownOverlay}
-          onPress={closeDropdown}
-        />
-      )}
     </View>
   );
 }
@@ -363,25 +393,40 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
 
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.background,
+  },
+
+  loadingText: {
+    fontSize: Typography.body,
+    color: Colors.textSecondary,
+  },
+
+  errorContainer: {
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+
+  errorText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+
   content: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.xxxl,
   },
 
-  /* Header */
-
   header: {
     marginBottom: Spacing.xl,
-  },
-
-  title: {
-    fontSize: 26,
-    lineHeight: 32,
-    fontWeight: "800",
-    color: Colors.text,
-    letterSpacing: -0.4,
-    marginBottom: Spacing.xs,
   },
 
   description: {
@@ -389,8 +434,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: Colors.text,
   },
-
-  /* Sections */
 
   section: {
     marginBottom: Spacing.lg,
@@ -415,16 +458,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
 
-  /* Rows */
-
   row: {
     minHeight: 70,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
-
     flexDirection: "row",
     alignItems: "center",
-
     zIndex: 1,
   },
 
@@ -432,7 +471,6 @@ const styles = StyleSheet.create({
     minHeight: 72,
     paddingHorizontal: Spacing.md,
     paddingVertical: 10,
-
     flexDirection: "row",
     alignItems: "center",
   },
@@ -462,8 +500,6 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.md,
     backgroundColor: Colors.border,
   },
-
-  /* Dropdown */
 
   dropdownOverlay: {
     ...StyleSheet.absoluteFill,

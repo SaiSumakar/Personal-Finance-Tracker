@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   TextInput,
   Platform,
@@ -17,18 +17,20 @@ import DateTimePicker, {
 
 import SettingsDropdown from "../components/SettingsDropdown";
 
-import { Colors } from "../../../theme/colors";
-import { Spacing } from "../../../theme/spacing";
-import { Radius } from "../../../theme/radius";
-import { Typography } from "../../../theme/typography";
+import { Colors } from "@/theme/colors";
+import { Spacing } from "@/theme/spacing";
+import { Radius } from "@/theme/radius";
+import { Typography } from "@/theme/typography";
 import { addDays } from "date-fns";
 
-type BudgetCycle = "Monthly" | "Quarterly" | "Yearly";
+import { useSettingsStore } from "../stores/settingsStore";
+
+type BudgetCycle = "monthly" | "quarterly" | "yearly";
 
 const budgetCycleOptions: BudgetCycle[] = [
-  "Monthly",
-  "Quarterly",
-  "Yearly",
+  "monthly",
+  "quarterly",
+  "yearly",
 ];
 
 const formatDate = (date: Date) => {
@@ -98,15 +100,15 @@ const getNextBudgetDate = (
 
   while (nextDate <= today) {
     switch (budgetCycle) {
-      case "Monthly":
+      case "monthly":
         nextDate = addDays(nextDate, 30);
         break;
 
-      case "Quarterly":
+      case "quarterly":
         nextDate = addMonths(nextDate, 3);
         break;
 
-      case "Yearly":
+      case "yearly":
         nextDate = addYears(nextDate, 1);
         break;
     }
@@ -128,16 +130,42 @@ const getDaysUntil = (date: Date) => {
   );
 };
 
+const formatBudgetCycle = (cycle: BudgetCycle) => {
+  return cycle.charAt(0).toUpperCase() + cycle.slice(1);
+};
+
 export default function BudgetSettingsPage() {
 
-  const [overallBudget, setOverallBudget] = useState('')
+  const {
+    settings,
+    loading,
+    error,
+    loadSettings,
+    updateSettings,
+  } = useSettingsStore();
+
+  const [budgetInput, setBudgetInput] = useState(
+    settings.totalBudget?.toString() ?? ""
+  );
+
+  useEffect(() => {
+    setBudgetInput(settings.totalBudget?.toString() ?? "");
+  }, [settings.totalBudget]);
 
   const [budgetDate, setBudgetDate] = useState(
     new Date()
   );
 
-  const [budgetCycle, setBudgetCycle] =
-    useState<BudgetCycle>("Monthly");
+  const budgetCycle =
+    settings.defaultBudgetCycle ?? "monthly";
+
+  const budgetCycleDisplay =
+    budgetCycle === "monthly"
+      ? "Monthly"
+      : budgetCycle === "quarterly"
+        ? "Quarterly"
+        : "Yearly";
+
   const [isBudgetCycleOpen, setIsBudgetCycleOpen] =
     useState(false);
 
@@ -185,10 +213,12 @@ export default function BudgetSettingsPage() {
     setDropdownPosition(undefined);
   };
 
-  const handleCycleChange = (
+  const handleCycleChange = async (
     cycle: BudgetCycle
   ) => {
-    setBudgetCycle(cycle);
+    await updateSettings({
+      defaultBudgetCycle: cycle,
+    });
     closeBudgetCycleDropdown();
   };
 
@@ -201,18 +231,15 @@ export default function BudgetSettingsPage() {
       return "Budget resets tomorrow";
     }
 
-    return `${budgetCycle} • ${daysUntilNextBudget} days`;
+    return `${formatBudgetCycle(budgetCycle)} • ${daysUntilNextBudget} days`;
   };
 
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
+
   return (
-    <View
-      style={styles.container}
-      onTouchStart={() => {
-        if (isBudgetCycleOpen) {
-          closeBudgetCycleDropdown();
-        }
-      }}
-    >
+    <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
@@ -292,9 +319,9 @@ export default function BudgetSettingsPage() {
               </View>
 
               <SettingsDropdown
-                value={budgetCycle}
+                value={budgetCycleDisplay}
                 options={budgetCycleOptions.map((c) => ({
-                  label: c,
+                  label: formatBudgetCycle(c),
                   value: c,
                 }))}
                 open={isBudgetCycleOpen}
@@ -303,7 +330,9 @@ export default function BudgetSettingsPage() {
                   setDropdownPosition(layout);
                   setIsBudgetCycleOpen(true);
                 }}
-                onSelect={(value) => handleCycleChange(value as BudgetCycle)}
+                onSelect={(value) =>
+                  handleCycleChange(value as BudgetCycle)
+                }
                 onClose={closeBudgetCycleDropdown}
               />
             </View>
@@ -319,8 +348,14 @@ export default function BudgetSettingsPage() {
               </View>
 
               <TextInput
-                value={overallBudget}
-                onChangeText={setOverallBudget}
+                value={budgetInput}
+                onChangeText={(value) => {
+                  setBudgetInput(value);
+
+                  updateSettings({
+                    totalBudget: value === "" ? 0 : Number(value),
+                  });
+                }}
                 placeholder="0.00"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="decimal-pad"
