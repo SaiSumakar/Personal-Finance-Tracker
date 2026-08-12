@@ -6,60 +6,67 @@ import {
   UpdateSettingsDTO,
 } from "../types/settings";
 
+import { DEFAULT_SETTINGS } from "@/constants/settings";
+
 interface SettingsStore {
-  settings: Settings | null;
+  settings: Settings;
   loading: boolean;
   error: string | null;
 
   loadSettings: () => Promise<void>;
-  updateSettings: (dto: UpdateSettingsDTO) => Promise<boolean>;
+  updateSettings: (
+    dto: UpdateSettingsDTO
+  ) => Promise<boolean>;
 }
 
-export const useSettingsStore = create<SettingsStore>((set) => ({
-  settings: null,
-  loading: false,
-  error: null,
+export const useSettingsStore =
+  create<SettingsStore>((set) => ({
+    settings: DEFAULT_SETTINGS,
+    loading: false,
+    error: null,
 
-  async loadSettings() {
-    set({
-      loading: true,
-      error: null,
-    });
+    async loadSettings() {
+      set({
+        loading: true,
+        error: null,
+      });
 
-    const result = await settingsService.getSettings();
+      const result =
+        await settingsService.getSettings();
 
-    if (!result.success) {
+      if (!result.success) {
+        set({
+          loading: false,
+          error: result.error.message,
+        });
+
+        return;
+      }
+
       set({
         loading: false,
-        error: result.error.message,
+        settings: result.data,
+        error: null,
       });
+    },
 
-      return;
-    }
+    async updateSettings(dto) {
+      const result =
+        await settingsService.updateSettings(dto);
 
-    set({
-      loading: false,
-      settings: result.data,
-      error: null,
-    });
-  },
+      if (!result.success) {
+        set({
+          error: result.error.message,
+        });
 
-  async updateSettings(dto) {
-    const result = await settingsService.updateSettings(dto);
+        return false;
+      }
 
-    if (!result.success) {
       set({
-        error: result.error.message,
+        settings: result.data,
+        error: null,
       });
 
-      return false;
-    }
-
-    set({
-      settings: result.data,
-      error: null,
-    });
-
-    return true;
-  },
-}));
+      return true;
+    },
+  }));
