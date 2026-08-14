@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, View, Text } from "react-native";
+import { ScrollView, StyleSheet, View, Text, ActivityIndicator } from "react-native";
+import { useEffect } from "react";
 import MonthlySpendingCard from "../components/MonthlySpendingCard";
 import BudgetCard from "../components/BudgetCard";
 import FinancialSummaryCard from "../components/FinancialSummaryCard";
@@ -7,43 +8,62 @@ import RecentTransactionsCard from "../components/RecentTransactionsCard";
 import { Typography } from "../../../theme/typography";
 import { Colors } from "../../../theme/colors";
 import { Spacing } from "../../../theme/spacing";
-
-const dummyCategories = [
-  { icon: "fast-food", label: "Food", amount: 6200, percentage: 33 },
-  { icon: "car", label: "Transport", amount: 3100, percentage: 16 },
-  { icon: "cart", label: "Shopping", amount: 2800, percentage: 15 },
-  { icon: "cafe", label: "Coffee", amount: 1250, percentage: 7 },
-];
-
-const dummyTransactions = [
-  { icon: "fast-food", label: "Lunch", date: "Aug 12", amount: -180 },
-  { icon: "car", label: "Uber", date: "Aug 11", amount: -240 },
-  { icon: "cart", label: "Groceries", date: "Aug 10", amount: -850 },
-  { icon: "cafe", label: "Coffee", date: "Aug 09", amount: -120 },
-  { icon: "cash", label: "Freelance", date: "Aug 08", amount: 5500 },
-];
+import { useDashboardStore } from "../stores/dashboardStore";
 
 export default function DashboardPage() {
+  const { data, isLoading, error, fetchDashboardData } = useDashboardStore();
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={styles.loadingText}>Loading dashboard...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Error: {error}</Text>
+      </View>
+    );
+  }
+
+  if (!data) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No data available</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <Text style={styles.description}>Track your spending at a glance</Text>
       <MonthlySpendingCard
-        amount={18450}
-        change={8.2}
-        isIncrease
+        amount={data.monthlySpending.amount}
+        change={data.monthlySpending.change}
+        isIncrease={data.monthlySpending.isIncrease}
+        topCategory={data.monthlySpending.topCategory}
+        topCategoryAmount={data.monthlySpending.topCategoryAmount}
       />
       <BudgetCard
-        totalBudget={30000}
-        spent={18450}
-        remaining={11550}
+        totalBudget={data.budget.totalBudget}
+        spent={data.budget.spent}
+        remaining={data.budget.remaining}
       />
       <FinancialSummaryCard
-        income={35000}
-        expenses={18450}
-        net={16550}
+        income={data.financialSummary.income}
+        expenses={data.financialSummary.expenses}
+        net={data.financialSummary.net}
       />
-      <CategorySpendingCard categories={dummyCategories} />
-      <RecentTransactionsCard transactions={dummyTransactions} />
+      <CategorySpendingCard categories={data.categories} />
+      <RecentTransactionsCard transactions={data.transactions} />
     </ScrollView>
   );
 }
@@ -65,5 +85,38 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 22,
     marginBottom: Spacing.lg,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F7FB",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: Typography.body,
+    color: Colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F7FB",
+    padding: 20,
+  },
+  errorText: {
+    fontSize: Typography.body,
+    color: "#DC2626",
+    textAlign: "center",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F7FB",
+  },
+  emptyText: {
+    fontSize: Typography.body,
+    color: Colors.textSecondary,
   },
 });

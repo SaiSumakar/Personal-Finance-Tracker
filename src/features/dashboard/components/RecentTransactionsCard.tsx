@@ -1,7 +1,9 @@
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, View, Text, Pressable } from "react-native";
 
 type Transaction = {
-  icon?: string; // kept for compatibility, no longer used
+  // icon?: string; // kept for compatibility, no longer used
   label: string;
   date: string;
   amount: number;
@@ -20,6 +22,13 @@ function formatCurrency(value: number) {
 export default function RecentTransactionsCard({
   transactions,
 }: Props) {
+
+  const router = useRouter();
+
+  const handleViewAllTransactions = () => {
+    router.push("/transactions")
+  }
+
   return (
     <View style={styles.card}>
       {/* Header */}
@@ -105,12 +114,18 @@ export default function RecentTransactionsCard({
           styles.actionRow,
           pressed && styles.actionPressed,
         ]}
+        onPress={handleViewAllTransactions}
       >
         <Text style={styles.actionText}>
           View all transactions
         </Text>
-
-        <Text style={styles.actionArrow}>→</Text>
+        
+        <Ionicons 
+          name="chevron-forward"
+          size={14}
+          color={"#2563EB"}
+          style={styles.actionArrow}
+        />
       </Pressable>
     </View>
   );
@@ -289,9 +304,6 @@ const styles = StyleSheet.create({
 
   actionArrow: {
     marginLeft: 7,
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#2563EB",
   },
 });
 

@@ -5,9 +5,10 @@ import {
   Pressable,
 } from "react-native";
 import { useMemo, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 
 type Category = {
-  icon?: string; // kept for compatibility, no longer used
+  // icon?: string; // kept for compatibility, no longer used
   label: string;
   amount: number;
   percentage: number;
@@ -257,7 +258,12 @@ export default function CategorySpendingCard({
             categories
           </Text>
 
-          <Text style={styles.actionArrow}>→</Text>
+          <Ionicons 
+            name="chevron-forward"
+            size={14}
+            color={"#2563EB"}
+            style={styles.actionArrow}
+          />
         </Pressable>
       )}
     </View>
@@ -498,9 +504,5 @@ const styles = StyleSheet.create({
 
   actionArrow: {
     marginLeft: 7,
-
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#2563EB",
   },
 });
