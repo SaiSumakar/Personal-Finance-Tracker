@@ -1,6 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, Link, useSegments } from "expo-router";
-import { Pressable } from "react-native";
+import { useEffect } from "react";
+import { Image, Pressable, StyleSheet } from "react-native";
+
+import { useProfileStore } from "@/features/profile/stores/profileStore";
 
 function formatTitle(segment: string) {
   return segment
@@ -24,6 +27,14 @@ function getGreeting(name?: string) {
 
 export default function TabsLayout() {
   const segments = useSegments();
+  const pictureUri = useProfileStore(
+    (state) => state.data?.profile.picture_uri ?? null
+  );
+  const loadProfile = useProfileStore((state) => state.loadProfile);
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
 
   const route = segments[segments.length - 1];
 
@@ -45,15 +56,24 @@ export default function TabsLayout() {
         headerRight: () => (
           <Link href="/profile" asChild>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open profile"
               style={{
                 marginRight: 16,
               }}
             >
-              <Ionicons
-                name="person-circle-outline"
-                size={30}
-                color="black"
-              />
+              {pictureUri ? (
+                <Image
+                  source={{ uri: pictureUri }}
+                  style={styles.profilePicture}
+                />
+              ) : (
+                <Ionicons
+                  name="person-circle-outline"
+                  size={30}
+                  color="black"
+                />
+              )}
             </Pressable>
           </Link>
         ),
@@ -140,3 +160,11 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  profilePicture: {
+    width: 34,
+    height: 34,
+    borderRadius: 20,
+  },
+});
