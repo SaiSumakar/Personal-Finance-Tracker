@@ -6,6 +6,7 @@ import {
 } from "react-native";
 import { useMemo, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 type Category = {
   // icon?: string; // kept for compatibility, no longer used
@@ -123,6 +124,9 @@ export default function CategorySpendingCard({
   onCategoryPress,
   onViewAll,
 }: Props) {
+
+  const router = useRouter();
+
   const [selectedType, setSelectedType] =
     useState<CategoryType>("expense");
 
@@ -140,6 +144,10 @@ export default function CategorySpendingCard({
   const categoryCount = topCategories.length;
 
   const hasCategories = categoryCount > 0;
+
+  const handleViewCategorySpending = () => {
+    router.push("/analytics");
+  }
 
   return (
     <View style={styles.card}>
@@ -244,7 +252,7 @@ export default function CategorySpendingCard({
       {/* View all */}
       {hasCategories && (
         <Pressable
-          onPress={() => onViewAll?.(selectedType)}
+          onPress={handleViewCategorySpending}
           style={({ pressed }) => [
             styles.actionRow,
             pressed && styles.actionPressed,
