@@ -5,7 +5,9 @@ import { Image, Pressable, StyleSheet } from "react-native";
 
 import { useProfileStore } from "@/features/profile/stores/profileStore";
 
-function formatTitle(segment: string) {
+function formatTitle(segment?: string) {
+  if (!segment) return "";
+
   return segment
     .replace(/-/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
@@ -36,7 +38,7 @@ export default function TabsLayout() {
     void loadProfile();
   }, [loadProfile]);
 
-  const route = segments[segments.length - 1];
+  const route = segments[segments.length - 1] ?? "(tabs)";
 
   let headerTitle = formatTitle(route);
 

@@ -17,7 +17,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.saisumakar.financetracker"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,6 +35,18 @@
           "microphonePermission": false
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cb1f1e97-fc97-436a-9498-50c8bdfa873a"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/cb1f1e97-fc97-436a-9498-50c8bdfa873a"
+    }
   }
 }
