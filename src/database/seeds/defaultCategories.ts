@@ -51,6 +51,44 @@ export async function seedDatabase() {
     );
   }
 
+  const defaultAccount = await db.getFirstAsync<{
+    id: number;
+  }>(
+    `
+    SELECT id
+    FROM accounts
+    WHERE name = ?
+    LIMIT 1
+    `,
+    ["Cash"]
+  );
+
+  if (!defaultAccount) {
+    throw new Error("Default Cash account was not created");
+  }
+
+  const defaultSettings = [
+    ["theme", "light"],
+    ["defaultTransactionType", "expense"],
+    ["defaultAccountId", String(defaultAccount.id)],
+    ["currency", "INR"],
+    ["dateFormat", "dd/mm/yyyy"],
+    ["confirmTransactionDelete", "1"],
+    ["budgetDate", new Date().toISOString()],
+    ["defaultBudgetCycle", "monthly"],
+    ["totalBudget", "0"],
+  ];
+
+  for (const [key, value] of defaultSettings) {
+    await db.runAsync(
+      `
+      INSERT OR IGNORE INTO settings (key, value)
+      VALUES (?, ?)
+      `,
+      [key, value]
+    );
+  }
+
   const categoryCount = await db.getFirstAsync<{
     count: number;
   }>("SELECT COUNT(*) as count FROM categories");

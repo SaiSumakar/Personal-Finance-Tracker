@@ -10,6 +10,8 @@ export interface DashboardData {
     totalBudget: number;
     spent: number;
     remaining: number;
+    budgetDate: string;
+    budgetCycle: "monthly" | "quarterly" | "yearly";
   };
   financialSummary: {
     income: number;

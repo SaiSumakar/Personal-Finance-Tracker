@@ -117,6 +117,18 @@ class SettingsService {
 
       // Validate budget cycle
       if (
+        dto.budgetDate !== undefined &&
+        Number.isNaN(new Date(dto.budgetDate).getTime())
+      ) {
+        return {
+          success: false as const,
+          error: {
+            message: "Invalid budget date",
+          },
+        };
+      }
+
+      if (
         dto.defaultBudgetCycle !== undefined &&
         !["monthly", "quarterly", "yearly"].includes(
           dto.defaultBudgetCycle

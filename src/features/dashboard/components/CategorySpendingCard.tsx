@@ -157,16 +157,6 @@ export default function CategorySpendingCard({
           <Text style={styles.cardTitle}>
             Spending by Category
           </Text>
-
-          <Text style={styles.subtitle}>
-            Top {categoryCount}{" "}
-            {selectedType === "expense"
-              ? "expense"
-              : "income"}{" "}
-            {categoryCount === 1
-              ? "category"
-              : "categories"}
-          </Text>
         </View>
       </View>
 
@@ -210,6 +200,11 @@ export default function CategorySpendingCard({
           </Text>
         </Pressable>
       </View>
+
+      {/* Percentage context */}
+      <Text style={styles.percentageNote}>
+        Percentages are based on total money spent, not total budget.
+      </Text>
 
       {/* Categories */}
       {hasCategories ? (
@@ -512,5 +507,13 @@ const styles = StyleSheet.create({
 
   actionArrow: {
     marginLeft: 7,
+  },
+
+  percentageNote: {
+    marginTop: -8,
+    marginBottom: 6,
+    fontSize: 10,
+    lineHeight: 15,
+    color: "#94A3B8",
   },
 });

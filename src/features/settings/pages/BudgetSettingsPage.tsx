@@ -153,8 +153,17 @@ export default function BudgetSettingsPage() {
   }, [settings.totalBudget]);
 
   const [budgetDate, setBudgetDate] = useState(
-    new Date()
+    new Date(settings.budgetDate)
   );
+
+  const [selectedBudgetDate, setSelectedBudgetDate] =
+    useState(new Date(settings.budgetDate));
+
+  useEffect(() => {
+    const savedBudgetDate = new Date(settings.budgetDate);
+    setBudgetDate(savedBudgetDate);
+    setSelectedBudgetDate(savedBudgetDate);
+  }, [settings.budgetDate]);
 
   const budgetCycle =
     settings.defaultBudgetCycle ?? "monthly";
@@ -194,9 +203,15 @@ export default function BudgetSettingsPage() {
       DateTimePickerAndroid.open({
         value: budgetDate,
         mode: "date",
-        onChange: (_event, selectedDate) => {
-          if (selectedDate) {
+        onValueChange: (_event, selectedDate) => {
+          if (
+            startOfDay(selectedDate).getTime() !==
+              startOfDay(budgetDate).getTime()
+          ) {
             setBudgetDate(selectedDate);
+            void updateSettings({
+              budgetDate: selectedDate.toISOString(),
+            });
           }
         },
         minimumDate: new Date(),
@@ -205,7 +220,24 @@ export default function BudgetSettingsPage() {
       return;
     }
 
+    setSelectedBudgetDate(budgetDate);
     setIsBudgetDatePickerOpen(true);
+  };
+
+  const saveSelectedBudgetDate = async () => {
+    if (
+      startOfDay(selectedBudgetDate).getTime() ===
+      startOfDay(budgetDate).getTime()
+    ) {
+      setIsBudgetDatePickerOpen(false);
+      return;
+    }
+
+    setBudgetDate(selectedBudgetDate);
+    await updateSettings({
+      budgetDate: selectedBudgetDate.toISOString(),
+    });
+    setIsBudgetDatePickerOpen(false);
   };
 
   const closeBudgetCycleDropdown = () => {
@@ -368,19 +400,19 @@ export default function BudgetSettingsPage() {
           {Platform.OS === "ios" && isBudgetDatePickerOpen && (
             <View style={styles.iosPickerContainer}>
               <DateTimePicker
-                value={budgetDate}
+                value={selectedBudgetDate}
                 mode="date"
                 display="spinner"
                 onValueChange={(_event, selectedDate) => {
                   if (selectedDate) {
-                    setBudgetDate(selectedDate);
+                    setSelectedBudgetDate(selectedDate);
                   }
                 }}
                 minimumDate={new Date()}
               />
 
               <Pressable
-                onPress={() => setIsBudgetDatePickerOpen(false)}
+                onPress={saveSelectedBudgetDate}
                 style={styles.doneButton}
               >
                 <Text style={styles.doneButtonText}>Done</Text>

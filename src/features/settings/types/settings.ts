@@ -13,6 +13,7 @@ export interface Settings {
   confirmTransactionDelete: boolean,
 
   // budget
+  budgetDate: string,
   defaultBudgetCycle: "monthly" | "quarterly" | "yearly",
   totalBudget: number,
 }
@@ -29,6 +30,7 @@ export interface UpdateSettingsDTO {
   confirmTransactionDelete?: boolean;
 
   // Budget
+  budgetDate?: string;
   defaultBudgetCycle?: "monthly" | "quarterly" | "yearly";
   totalBudget?: number;
 }

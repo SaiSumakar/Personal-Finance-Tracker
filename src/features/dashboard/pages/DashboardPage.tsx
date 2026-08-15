@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, View, Text, ActivityIndicator } from "react-native";
-import { useEffect } from "react";
+import { useCallback } from "react";
+import { useFocusEffect } from "expo-router";
 import MonthlySpendingCard from "../components/MonthlySpendingCard";
 import BudgetCard from "../components/BudgetCard";
 import FinancialSummaryCard from "../components/FinancialSummaryCard";
@@ -13,9 +14,13 @@ import { useDashboardStore } from "../stores/dashboardStore";
 export default function DashboardPage() {
   const { data, isLoading, error, fetchDashboardData } = useDashboardStore();
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void fetchDashboardData();
+    }, [fetchDashboardData])
+  );
+
+  console.log("dashboard data", data?.categories)
 
   if (isLoading) {
     return (
@@ -56,6 +61,8 @@ export default function DashboardPage() {
         totalBudget={data.budget.totalBudget}
         spent={data.budget.spent}
         remaining={data.budget.remaining}
+        budgetDate={data.budget.budgetDate}
+        budgetCycle={data.budget.budgetCycle}
       />
       <FinancialSummaryCard
         income={data.financialSummary.income}

@@ -40,6 +40,8 @@ class DashboardService {
           totalBudget,
           spent,
           remaining,
+          budgetDate: settings.budgetDate,
+          budgetCycle: settings.defaultBudgetCycle,
         },
         financialSummary: {
           income: financialSummary.monthlyIncome,
@@ -74,6 +76,8 @@ class DashboardService {
           totalBudget: 0,
           spent: 0,
           remaining: 0,
+          budgetDate: new Date().toISOString(),
+          budgetCycle: "monthly",
         },
         financialSummary: {
           income: 0,

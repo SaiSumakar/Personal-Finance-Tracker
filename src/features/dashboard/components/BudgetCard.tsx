@@ -4,7 +4,74 @@ type Props = {
   totalBudget: number;
   spent: number;
   remaining: number;
-  daysRemaining?: number;
+  budgetDate: string;
+  budgetCycle: "monthly" | "quarterly" | "yearly";
+};
+
+const startOfDay = (date: Date) => {
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  return result;
+};
+
+const addMonths = (date: Date, months: number) => {
+  const result = new Date(date);
+  const originalDay = result.getDate();
+
+  result.setDate(1);
+  result.setMonth(result.getMonth() + months);
+  result.setDate(
+    Math.min(
+      originalDay,
+      new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate()
+    )
+  );
+
+  return result;
+};
+
+const addYears = (date: Date, years: number) => {
+  const result = new Date(date);
+  const originalMonth = result.getMonth();
+  const originalDay = result.getDate();
+
+  result.setDate(1);
+  result.setFullYear(result.getFullYear() + years);
+  result.setMonth(originalMonth);
+  result.setDate(
+    Math.min(
+      originalDay,
+      new Date(result.getFullYear(), originalMonth + 1, 0).getDate()
+    )
+  );
+
+  return result;
+};
+
+const getDaysRemaining = (
+  budgetDate: string,
+  budgetCycle: Props["budgetCycle"]
+) => {
+  const today = startOfDay(new Date());
+  let nextBudgetDate = startOfDay(new Date(budgetDate));
+
+  while (nextBudgetDate <= today) {
+    switch (budgetCycle) {
+      case "monthly":
+        nextBudgetDate.setDate(nextBudgetDate.getDate() + 30);
+        break;
+      case "quarterly":
+        nextBudgetDate = addMonths(nextBudgetDate, 3);
+        break;
+      case "yearly":
+        nextBudgetDate = addYears(nextBudgetDate, 1);
+        break;
+    }
+  }
+
+  return Math.ceil(
+    (nextBudgetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
 };
 
 function formatCurrency(value: number) {
@@ -17,8 +84,10 @@ export default function BudgetCard({
   totalBudget,
   spent,
   remaining,
-  daysRemaining = 12,
+  budgetDate,
+  budgetCycle,
 }: Props) {
+  const daysRemaining = getDaysRemaining(budgetDate, budgetCycle);
   const safeBudget = Math.max(totalBudget, 0);
 
   const rawPercentage =

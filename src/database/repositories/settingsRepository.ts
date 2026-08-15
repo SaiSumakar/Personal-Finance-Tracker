@@ -55,6 +55,10 @@ class SettingsRepository extends BaseRepository {
             values.get("confirmTransactionDelete")
           ),
 
+        budgetDate:
+          values.get("budgetDate") ??
+          new Date().toISOString(),
+
         defaultBudgetCycle:
           values.get(
             "defaultBudgetCycle"
