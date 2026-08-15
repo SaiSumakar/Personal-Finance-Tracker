@@ -9,8 +9,6 @@
 //   CREATE_INDEXES,
 // } from "../schema";
 
-import { seedDatabase } from "../seeds/defaultCategories";
-
 // const DATABASE_VERSION = 1;
 
 // export async function migrate(db: SQLiteDatabase) {
@@ -63,6 +61,10 @@ export async function migrate(db: SQLiteDatabase) {
   await db.execAsync(CREATE_TRANSACTIONS_TABLE);
 
   await db.execAsync(CREATE_SETTINGS_TABLE);
+
+  await db.execAsync(CREATE_PROFILE_TABLE);
+
+  await db.execAsync(CREATE_DEFAULT_PROFILE);
 
   await db.execAsync(CREATE_INDEXES);
 }
@@ -173,6 +175,37 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
 
     value TEXT
+);
+`;
+
+export const CREATE_PROFILE_TABLE = `
+CREATE TABLE IF NOT EXISTS profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+
+    preferred_name TEXT NOT NULL DEFAULT '',
+
+    picture_uri TEXT,
+
+    created_at TEXT NOT NULL,
+
+    updated_at TEXT NOT NULL
+);
+`;
+
+export const CREATE_DEFAULT_PROFILE = `
+INSERT OR IGNORE INTO profile (
+    id,
+    preferred_name,
+    picture_uri,
+    created_at,
+    updated_at
+)
+VALUES (
+    1,
+    '',
+    NULL,
+    datetime('now'),
+    datetime('now')
 );
 `;
 
