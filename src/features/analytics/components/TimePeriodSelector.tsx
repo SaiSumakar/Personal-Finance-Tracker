@@ -33,10 +33,6 @@ const options: {
     value: "quarter",
     label: "This quarter",
   },
-  {
-    value: "custom",
-    label: "Custom",
-  },
 ];
 
 export default function TimePeriodSelector({
