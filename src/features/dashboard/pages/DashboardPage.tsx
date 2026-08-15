@@ -20,8 +20,6 @@ export default function DashboardPage() {
     }, [fetchDashboardData])
   );
 
-  console.log("dashboard data", data?.categories)
-
   if (isLoading) {
     return (
       <View style={styles.loaderContainer}>
