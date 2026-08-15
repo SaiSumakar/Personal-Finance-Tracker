@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
-import dashboardService, { DashboardData } from "../services/dashboardService";
+import dashboardService from "../services/dashboardService";
+import { DashboardData } from "../types/dashboard";
 
 interface DashboardStore {
   data: DashboardData | null;
