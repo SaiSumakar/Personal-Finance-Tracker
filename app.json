@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "finance-tracker",
+    "name": "Trace",
     "slug": "finance-tracker",
     "scheme": "financetracker",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon.jpeg",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
