@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { format, isToday, isYesterday } from "date-fns";
 
 import TransactionCard from "../components/TransactionCard";
+import EditTransactionModal from "../components/EditTransactionModal";
 
 import { useTransactionStore } from "../stores/transactionStore";
 import { useCategoryStore } from "../../categories/stores/categoryStore";
@@ -51,6 +52,10 @@ export default function TransactionPage() {
     () => [...expenseCategories, ...incomeCategories],
     [expenseCategories, incomeCategories]
   );
+
+  const [editingTransaction, setEditingTransaction] = useState<
+    (typeof transactions)[number] | null
+  >(null);
 
   useEffect(() => {
     loadTransactions();
@@ -213,7 +218,7 @@ export default function TransactionPage() {
           item.account_id
         )}
         onPress={() => {
-          // Transaction details/edit screen later.
+          setEditingTransaction(item);
         }}
       />
     );
@@ -379,6 +384,14 @@ export default function TransactionPage() {
             )}
           </View>
         }
+      />
+
+      <EditTransactionModal
+        visible={editingTransaction !== null}
+        transaction={editingTransaction}
+        onClose={() => {
+          setEditingTransaction(null);
+        }}
       />
     </View>
   );
