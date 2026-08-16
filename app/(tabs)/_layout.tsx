@@ -34,6 +34,8 @@ export default function TabsLayout() {
   );
   const loadProfile = useProfileStore((state) => state.loadProfile);
 
+  const preferredName = useProfileStore((state) => state.data?.profile.preferred_name ?? "User");
+
   useEffect(() => {
     void loadProfile();
   }, [loadProfile]);
@@ -44,7 +46,7 @@ export default function TabsLayout() {
 
   if (route === "(tabs)") {
     // Replace "John" with your actual user's name
-    headerTitle = getGreeting("Sai");
+    headerTitle = getGreeting(preferredName);
   } else if (route === "create") {
     headerTitle = "Create";
   }
