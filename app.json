@@ -5,7 +5,7 @@
     "scheme": "financetracker",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.jpeg",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -34,7 +34,8 @@
           "photosPermission": "Allow Finance Tracker to access your photos so you can set a profile picture.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-image"
     ],
     "extra": {
       "router": {},
