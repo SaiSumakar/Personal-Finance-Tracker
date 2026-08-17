@@ -38,8 +38,6 @@ import { useCategoryStore } from "../../categories/stores/categoryStore";
 
 import { Colors } from "../../../theme/colors";
 import { Spacing } from "../../../theme/spacing";
-import { Radius } from "../../../theme/radius";
-import { Typography } from "../../../theme/typography";
 
 type Transaction = {
   id: number;
@@ -67,6 +65,10 @@ export default function EditTransactionModal({
   const updateTransaction = useTransactionStore(
     (state) => state.updateTransaction
   );
+
+  const deleteTransaction = useTransactionStore(
+    (state) => state.deleteTransaction
+  )
 
   const transactionLoading = useTransactionStore(
     (state) => state.loading
@@ -202,6 +204,44 @@ export default function EditTransactionModal({
     onClose();
   };
 
+  const handleDelete = (id: number) => {
+    Alert.alert(
+      "Delete transaction?",
+      "Are you sure you want to delete this transaction? This action will also update the account balance.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const result = await deleteTransaction(id);
+
+              if (!result) {
+                Alert.alert(
+                  "Unable to delete",
+                  "The transaction could not be deleted. Please try again."
+                );
+
+                return;
+              }
+
+              onClose();
+            } catch {
+              Alert.alert(
+                "Couldn't delete transaction",
+                "Something went wrong. Please try again."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const onSubmit = async (
     data: TransactionFormValues
   ) => {
@@ -247,10 +287,10 @@ export default function EditTransactionModal({
 
   const isIncome =
     transactionType === "income";
-
-  const amountLabel = isIncome
-    ? "Amount received"
-    : "Amount spent";
+    
+  if (!transaction) {
+    return null;
+  }
 
   return (
     <Modal
@@ -321,13 +361,16 @@ export default function EditTransactionModal({
               <View
                 style={[
                   styles.amountCard,
-                  isIncome && styles.amountCardIncome,
+                  isIncome &&
+                    styles.amountCardIncome,
                 ]}
               >
                 <View style={styles.amountHeader}>
                   <View style={styles.amountHeaderText}>
                     <Text style={styles.amountLabel}>
-                      {isIncome ? "Income" : "Expense"}
+                      {isIncome
+                        ? "Income"
+                        : "Expense"}
                     </Text>
 
                     <Text style={styles.amountHint}>
@@ -367,10 +410,12 @@ export default function EditTransactionModal({
                     name="category_id"
                     control={methods.control}
                     placeholder="Select category"
-                    options={categories.map((category) => ({
-                      label: category.name,
-                      value: category.id,
-                    }))}
+                    options={categories.map(
+                      (category) => ({
+                        label: category.name,
+                        value: category.id,
+                      })
+                    )}
                   />
                 </View>
 
@@ -382,10 +427,12 @@ export default function EditTransactionModal({
                     name="account_id"
                     control={methods.control}
                     placeholder="Select account"
-                    options={accounts.map((account) => ({
-                      label: account.name,
-                      value: account.id,
-                    }))}
+                    options={accounts.map(
+                      (account) => ({
+                        label: account.name,
+                        value: account.id,
+                      })
+                    )}
                   />
                 </View>
 
@@ -410,7 +457,8 @@ export default function EditTransactionModal({
               <Pressable
                 style={({ pressed }) => [
                   styles.saveButton,
-                  pressed && styles.saveButtonPressed,
+                  pressed &&
+                    styles.saveButtonPressed,
                   transactionLoading &&
                     styles.saveButtonDisabled,
                 ]}
@@ -431,6 +479,27 @@ export default function EditTransactionModal({
                   {transactionLoading
                     ? "Saving..."
                     : "Save changes"}
+                </Text>
+              </Pressable>
+
+              {/* Delete */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.deleteButton,
+                  pressed && styles.deleteButtonPressed,
+                  transactionLoading && styles.deleteButtonDisabled,
+                ]}
+                onPress={() => handleDelete(transaction.id)}
+                disabled={transactionLoading}
+              >
+                <Ionicons
+                  name="trash-outline"
+                  size={16}
+                  color={Colors.danger ?? "#DC2626"}
+                />
+
+                <Text style={styles.deleteButtonText}>
+                  Delete transaction
                 </Text>
               </Pressable>
             </ScrollView>
@@ -455,18 +524,18 @@ const styles = StyleSheet.create({
   modalContainer: {
     backgroundColor: Colors.background,
 
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
 
     maxHeight: "90%",
 
-    paddingTop: 8,
+    paddingTop: 7,
 
     overflow: "hidden",
   },
 
   modalHandle: {
-    width: 38,
+    width: 34,
     height: 4,
 
     borderRadius: 4,
@@ -476,7 +545,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.textSecondary,
     opacity: 0.3,
 
-    marginBottom: 12,
+    marginBottom: 8,
   },
 
   /* Header */
@@ -486,32 +555,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
 
     paddingHorizontal: Spacing.lg,
-    paddingBottom: 14,
+    paddingBottom: 10,
   },
 
   modalHeaderText: {
     flex: 1,
-    paddingRight: 12,
+    paddingRight: 10,
   },
 
   modalTitle: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: "700",
     color: Colors.text,
   },
 
   modalSubtitle: {
-    marginTop: 2,
+    marginTop: 1,
 
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textSecondary,
   },
 
   closeButton: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
 
-    borderRadius: 11,
+    borderRadius: 10,
 
     alignItems: "center",
     justifyContent: "center",
@@ -528,14 +597,14 @@ const styles = StyleSheet.create({
 
   formContent: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: 2,
-    paddingBottom: 28,
+    paddingTop: 0,
+    paddingBottom: 22,
   },
 
   /* Type */
 
   typeSection: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
 
   /* Amount */
@@ -543,14 +612,14 @@ const styles = StyleSheet.create({
   amountCard: {
     backgroundColor: Colors.surface,
 
-    borderRadius: 18,
+    borderRadius: 14,
 
     borderWidth: 1,
     borderColor: Colors.border,
 
-    padding: 15,
+    padding: 13,
 
-    marginBottom: 14,
+    marginBottom: 9,
   },
 
   amountCardIncome: {
@@ -562,7 +631,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
 
-    marginBottom: 8,
+    marginBottom: 6,
   },
 
   amountHeaderText: {
@@ -570,23 +639,23 @@ const styles = StyleSheet.create({
   },
 
   amountLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     color: Colors.text,
   },
 
   amountHint: {
-    marginTop: 2,
+    marginTop: 1,
 
-    fontSize: 11,
+    fontSize: 10,
     color: Colors.textSecondary,
   },
 
   amountIcon: {
-    width: 34,
-    height: 34,
+    width: 32,
+    height: 32,
 
-    borderRadius: 10,
+    borderRadius: 9,
 
     alignItems: "center",
     justifyContent: "center",
@@ -601,7 +670,7 @@ const styles = StyleSheet.create({
   },
 
   amountIconText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "800",
   },
 
@@ -618,20 +687,20 @@ const styles = StyleSheet.create({
   detailsCard: {
     backgroundColor: Colors.surface,
 
-    borderRadius: 18,
+    borderRadius: 14,
 
     borderWidth: 1,
     borderColor: Colors.border,
 
-    paddingHorizontal: 15,
+    paddingHorizontal: 13,
   },
 
   field: {
-    paddingVertical: 11,
+    paddingVertical: 8,
   },
 
   noteField: {
-    paddingVertical: 11,
+    paddingVertical: 8,
   },
 
   divider: {
@@ -642,9 +711,9 @@ const styles = StyleSheet.create({
   /* Save */
 
   saveButton: {
-    height: 50,
+    height: 46,
 
-    borderRadius: 14,
+    borderRadius: 12,
 
     backgroundColor:
       Colors.primary ?? "#4F46E5",
@@ -653,9 +722,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
 
-    gap: 7,
+    gap: 6,
 
-    marginTop: 14,
+    marginTop: 10,
   },
 
   saveButtonPressed: {
@@ -671,5 +740,35 @@ const styles = StyleSheet.create({
 
     fontSize: 14,
     fontWeight: "700",
+  },
+
+  /* Delete */
+
+  deleteButton: {
+    height: 40,
+
+    borderRadius: 11,
+
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+
+    gap: 6,
+
+    marginTop: 5,
+  },
+
+  deleteButtonPressed: {
+    opacity: 0.55,
+  },
+
+  deleteButtonDisabled: {
+    opacity: 0.35,
+  },
+
+  deleteButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.danger ?? "#DC2626",
   },
 });

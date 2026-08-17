@@ -50,7 +50,7 @@ class TransactionService {
       );
     }
 
-    const id = await transactionRepository.create(dto);
+    const id = await transactionRepository.createTransaction(dto);
 
     return success(id);
   }
@@ -81,7 +81,7 @@ class TransactionService {
 
   async deleteTransaction(id: number): Promise<ServiceResult<boolean>> {
     try {
-      const deleted = await transactionRepository.delete(id);
+      const deleted = await transactionRepository.deleteTransaction(id);
       return success(deleted);
     } catch (error) {
       return failure(
@@ -96,7 +96,7 @@ class TransactionService {
     dto: CreateTransactionDTO
   ): Promise<ServiceResult<boolean>> {
     try {
-      const updated = await transactionRepository.update(id, dto);
+      const updated = await transactionRepository.updateTransaction(id, dto);
       return success(updated);
     } catch (error) {
       return failure(

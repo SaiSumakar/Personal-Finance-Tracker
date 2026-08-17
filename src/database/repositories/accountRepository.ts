@@ -150,6 +150,27 @@ class AccountRepository extends BaseRepository {
     }
   }
 
+  async updateBalance(
+    db: Awaited<ReturnType<typeof this.db>>,
+    accountId: number,
+    amount: number
+  ): Promise<boolean> {
+    const now = new Date().toISOString();
+
+    const result = await db.runAsync(
+      `
+      UPDATE accounts
+      SET
+        current_balance = current_balance + ?,
+        updated_at = ?
+      WHERE id = ?;
+      `,
+      [amount, now, accountId]
+    );
+
+    return result.changes > 0;
+  }
+
   async archive(id: number): Promise<boolean> {
     try {
       const db = await this.db();

@@ -3,11 +3,12 @@ import {
   Transaction,
   CreateTransactionDTO,
 } from "../../features//transactions/types/transaction";
+import accountRepository from "./accountRepository";
 
 class TransactionRepository extends BaseRepository {
-  async create(dto: CreateTransactionDTO) {
+  async create(dto: CreateTransactionDTO, database?: Awaited<ReturnType<typeof this.db>>) {
     try {
-      const db = await this.db();
+      const db = database ?? (await this.db());
 
       const now = new Date().toISOString();
 
@@ -45,6 +46,47 @@ class TransactionRepository extends BaseRepository {
       return result.lastInsertRowId;
     } catch (error) {
       this.handleError("create transaction", error);
+    }
+  }
+
+  async createTransaction(
+    dto: CreateTransactionDTO
+  ): Promise<number> {
+    try {
+      const db = await this.db();
+
+      let transactionId = 0;
+
+      await db.withExclusiveTransactionAsync(async (txn) => {
+        // Create transaction using the transaction connection
+        transactionId = await this.create(dto, txn);
+
+        // Income increases balance
+        // Expense decreases balance
+        const balanceChange =
+          dto.type === "income"
+            ? dto.amount
+            : -dto.amount;
+
+        // Update account using the SAME transaction
+        const updated =
+          await accountRepository.updateBalance(
+            txn,
+            dto.account_id,
+            balanceChange
+          );
+
+        if (!updated) {
+          throw new Error(
+            "Failed to update account balance."
+          );
+        }
+      });
+
+      return transactionId;
+    } catch (error) {
+      this.handleError("Create transaction", error);
+      throw error;
     }
   }
 
@@ -106,10 +148,11 @@ class TransactionRepository extends BaseRepository {
 
   async update(
     id: number,
-    dto: CreateTransactionDTO
+    dto: CreateTransactionDTO,
+    database?: Awaited<ReturnType<typeof this.db>>
   ): Promise<boolean> {
     try {
-      const db = await this.db();
+      const db = database ?? (await this.db());
 
       await db.runAsync(
         `
@@ -146,6 +189,87 @@ class TransactionRepository extends BaseRepository {
     }
   }
 
+  async updateTransaction(
+    id: number,
+    dto: CreateTransactionDTO
+  ): Promise<boolean> {
+    try {
+      const db = await this.db();
+
+      let updated = false;
+
+      await db.withExclusiveTransactionAsync(async (txn) => {
+        // Get the existing transaction first
+        const oldTransaction =
+          await txn.getFirstAsync<Transaction>(
+            `
+            SELECT *
+            FROM transactions
+            WHERE id = ?
+            AND deleted_at IS NULL;
+            `,
+            [id]
+          );
+
+        if (!oldTransaction) {
+          throw new Error("Transaction not found.");
+        }
+
+        // Reverse the old transaction's effect on the account
+        const oldBalanceChange =
+          oldTransaction.type === "income"
+            ? oldTransaction.amount
+            : -oldTransaction.amount;
+
+        const reversed =
+          await accountRepository.updateBalance(
+            txn,
+            oldTransaction.account_id,
+            -oldBalanceChange
+          );
+
+        if (!reversed) {
+          throw new Error(
+            "Failed to reverse old account balance."
+          );
+        }
+
+        // Update transaction using the SAME transaction connection
+        updated = await this.update(id, dto, txn);
+
+        if (!updated) {
+          throw new Error(
+            "Failed to update transaction."
+          );
+        }
+
+        // Apply the new transaction's effect
+        const newBalanceChange =
+          dto.type === "income"
+            ? dto.amount
+            : -dto.amount;
+
+        const applied =
+          await accountRepository.updateBalance(
+            txn,
+            dto.account_id,
+            newBalanceChange
+          );
+
+        if (!applied) {
+          throw new Error(
+            "Failed to update new account balance."
+          );
+        }
+      });
+
+      return updated;
+    } catch (error) {
+      this.handleError("Update transaction", error);
+      throw error;
+    }
+  }
+
   async delete(id: number): Promise<boolean> {
     try {
       const db = await this.db();
@@ -165,6 +289,80 @@ class TransactionRepository extends BaseRepository {
       return true;
     } catch (error) {
       this.handleError("delete transactions", error);   
+    }
+  }
+
+  async deleteTransaction(id: number): Promise<boolean> {
+    try {
+      const db = await this.db();
+
+      let deleted = false;
+
+      await db.withExclusiveTransactionAsync(async (txn) => {
+        // Get the existing transaction first
+        const transaction =
+          await txn.getFirstAsync<Transaction>(
+            `
+            SELECT *
+            FROM transactions
+            WHERE id = ?
+            AND deleted_at IS NULL;
+            `,
+            [id]
+          );
+
+        if (!transaction) {
+          throw new Error("Transaction not found.");
+        }
+
+        // Determine the transaction's original effect
+        const balanceChange =
+          transaction.type === "income"
+            ? transaction.amount
+            : -transaction.amount;
+
+        // Reverse the transaction's effect
+        const reversed =
+          await accountRepository.updateBalance(
+            txn,
+            transaction.account_id,
+            -balanceChange
+          );
+
+        if (!reversed) {
+          throw new Error(
+            "Failed to update account balance."
+          );
+        }
+
+        // Soft delete the transaction
+        const result = await txn.runAsync(
+          `
+          UPDATE transactions
+          SET deleted_at = ?,
+              updated_at = ?
+          WHERE id = ?
+          AND deleted_at IS NULL;
+          `,
+          [
+            new Date().toISOString(),
+            new Date().toISOString(),
+            id,
+          ]
+        );
+
+        if (result.changes === 0) {
+          throw new Error(
+            "Failed to delete transaction."
+          );
+        }
+
+        deleted = true;
+      });
+
+      return deleted;
+    } catch (error) {
+      this.handleError("Delete transaction", error);
     }
   }
 }
