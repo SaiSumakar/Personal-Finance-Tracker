@@ -6,13 +6,17 @@ import BudgetCard from "../components/BudgetCard";
 import FinancialSummaryCard from "../components/FinancialSummaryCard";
 import CategorySpendingCard from "../components/CategorySpendingCard";
 import RecentTransactionsCard from "../components/RecentTransactionsCard";
+import AccountsBalancesCard from "../components/AccountBalancesCard";
 import { Typography } from "../../../theme/typography";
 import { Colors } from "../../../theme/colors";
 import { Spacing } from "../../../theme/spacing";
 import { useDashboardStore } from "../stores/dashboardStore";
+import { useAccountStore } from "@/features/accounts/stores/accountStore";
 
 export default function DashboardPage() {
   const { data, isLoading, error, fetchDashboardData } = useDashboardStore();
+
+  const accounts = useAccountStore((state) => state.accounts);
 
   useFocusEffect(
     useCallback(() => {
@@ -66,6 +70,9 @@ export default function DashboardPage() {
         income={data.financialSummary.income}
         expenses={data.financialSummary.expenses}
         net={data.financialSummary.net}
+      />
+      <AccountsBalancesCard
+        accounts={accounts}
       />
       <CategorySpendingCard categories={data.categories} />
       <RecentTransactionsCard transactions={data.transactions} />
