@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs, Link, useSegments } from "expo-router";
+import { Tabs, Link, useSegments, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { Image, Pressable, StyleSheet } from "react-native";
 
@@ -29,6 +29,7 @@ function getGreeting(name?: string) {
 
 export default function TabsLayout() {
   const segments = useSegments();
+  const router = useRouter();
   const pictureUri = useProfileStore(
     (state) => state.data?.profile.picture_uri ?? null
   );
@@ -150,6 +151,14 @@ export default function TabsLayout() {
 
       <Tabs.Screen
         name="settings"
+        listeners={{
+          tabPress: (e) => {
+            // Prevent the default tab behavior
+            e.preventDefault();
+
+            router.navigate("/(tabs)/settings");
+          },
+        }}
         options={{
           title: "Settings",
           tabBarIcon: ({ color, size }) => (
