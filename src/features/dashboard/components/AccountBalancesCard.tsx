@@ -47,7 +47,7 @@ export default function AccountsBalancesCard({
   const visibleAccounts = accounts.slice(0, 5);
 
   const handleViewAllAccounts = () => {
-    router.push("/(tabs)/settings/accounts");
+    router.push("/settings/accounts");
   };
 
   return (
@@ -73,7 +73,7 @@ export default function AccountsBalancesCard({
       {visibleAccounts.length > 0 ? (
         <View style={styles.list}>
           {visibleAccounts.map((account, index) => {
-            const balance = account.opening_balance;
+            const balance = account.current_balance;
 
             return (
               <Pressable

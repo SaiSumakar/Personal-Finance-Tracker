@@ -1,3 +1,5 @@
+import { Account } from "@/features/accounts/types/account";
+
 export interface DashboardData {
   monthlySpending: {
     amount: number;
@@ -18,6 +20,7 @@ export interface DashboardData {
     expenses: number;
     net: number;
   };
+  accounts: Array<Account>
   categories: Array<{
     icon: string | null;
     label: string;

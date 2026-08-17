@@ -4,6 +4,7 @@ export interface Account {
   type: string;
   currency: string;
   opening_balance: number;
+  current_balance: number;
   color: string | null;
   icon: string | null;
   is_archived: number;

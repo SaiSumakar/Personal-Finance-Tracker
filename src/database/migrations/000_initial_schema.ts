@@ -81,6 +81,8 @@ CREATE TABLE IF NOT EXISTS accounts (
 
     opening_balance INTEGER NOT NULL DEFAULT 0,
 
+    current_balance INTEGER NOT NULL DEFAULT 0,
+
     color TEXT,
 
     icon TEXT,

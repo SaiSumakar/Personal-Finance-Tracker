@@ -1,5 +1,6 @@
 import settingsRepository from "@/database/repositories/settingsRepository";
 import dashboardRepository from "@/database/repositories/dashboardRepository";
+import accountRepository from "@/database/repositories/accountRepository";
 import { DashboardData } from "../types/dashboard";
 
 class DashboardService {
@@ -18,9 +19,10 @@ class DashboardService {
    */
   async getDashboardData(): Promise<DashboardData> {
     try {
-      const [dashboardRawData, settings] = await Promise.all([
+      const [dashboardRawData, settings, accounts] = await Promise.all([
         dashboardRepository.getDashboardData(),
         settingsRepository.getSettings(),
+        accountRepository.getAll()
       ]);
 
       const { financialSummary, topCategories, recentTransactions } = dashboardRawData;
@@ -48,6 +50,7 @@ class DashboardService {
           expenses: financialSummary.monthlyExpenses,
           net: financialSummary.monthlyIncome - financialSummary.monthlyExpenses,
         },
+        accounts,
         categories: topCategories.map((cat) => ({
           icon: cat.icon,
           label: cat.name,
@@ -84,6 +87,7 @@ class DashboardService {
           expenses: 0,
           net: 0,
         },
+        accounts: [],
         categories: [],
         transactions: [],
       };

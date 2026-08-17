@@ -3,11 +3,12 @@ import { getDatabase } from "../database";
 import { migrate as migratev1 } from "./000_initial_schema"
 import { migrate as migratev2 } from "./001_add_delete_columns"
 import { migrate as migratev3 } from "./002_add_profile"
+import { migrate as migratev4 } from "./003_account_current_balance"
 
 import { seedDatabase } from "../seeds/defaultCategories";
 
 // latest
-const DATABASE_VERSION = 3.1;
+const DATABASE_VERSION = 3.5;
 
 export async function migrateDatabase() {
   const db = await getDatabase();
@@ -39,6 +40,9 @@ export async function migrateDatabase() {
 
     if (currentVersion < 3.1) {
       await migratev3(db);
+    }
+    if(currentVersion < 3.5) {
+      await migratev4(db);
     }
     await db.execAsync(`
       PRAGMA user_version = ${DATABASE_VERSION};

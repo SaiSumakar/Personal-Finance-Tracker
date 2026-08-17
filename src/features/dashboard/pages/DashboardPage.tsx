@@ -16,8 +16,6 @@ import { useAccountStore } from "@/features/accounts/stores/accountStore";
 export default function DashboardPage() {
   const { data, isLoading, error, fetchDashboardData } = useDashboardStore();
 
-  const accounts = useAccountStore((state) => state.accounts);
-
   useFocusEffect(
     useCallback(() => {
       void fetchDashboardData();
@@ -72,7 +70,7 @@ export default function DashboardPage() {
         net={data.financialSummary.net}
       />
       <AccountsBalancesCard
-        accounts={accounts}
+        accounts={data.accounts}
       />
       <CategorySpendingCard categories={data.categories} />
       <RecentTransactionsCard transactions={data.transactions} />

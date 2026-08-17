@@ -66,18 +66,20 @@ class AccountRepository extends BaseRepository {
           type,
           currency,
           opening_balance,
+          current_balance,
           color,
           icon,
           is_archived,
           created_at,
           updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         `,
         [
           dto.name,
           dto.type,
           dto.currency,
+          dto.opening_balance,
           dto.opening_balance,
           dto.color ?? null,
           dto.icon ?? null,
@@ -102,6 +104,19 @@ class AccountRepository extends BaseRepository {
       const db = await this.db();
       const now = new Date().toISOString();
 
+      const existingAccount = await this.getById(id);
+
+      if (!existingAccount) {
+        return null;
+      }
+
+      const openingBalanceDifference =
+        dto.opening_balance - existingAccount.opening_balance;
+
+      const newCurrentBalance =
+        existingAccount.current_balance +
+        openingBalanceDifference;
+
       await db.runAsync(
         `
         UPDATE accounts
@@ -110,6 +125,7 @@ class AccountRepository extends BaseRepository {
           type = ?,
           currency = ?,
           opening_balance = ?,
+          current_balance = ?,
           color = ?,
           icon = ?,
           updated_at = ?
@@ -120,6 +136,7 @@ class AccountRepository extends BaseRepository {
           dto.type,
           dto.currency,
           dto.opening_balance,
+          newCurrentBalance,
           dto.color ?? null,
           dto.icon ?? null,
           now,
