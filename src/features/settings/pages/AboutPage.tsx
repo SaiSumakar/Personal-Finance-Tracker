@@ -4,7 +4,9 @@ import { StyleSheet, Text, View } from "react-native";
 import { Colors } from "@/theme/colors";
 import { Spacing } from "@/theme/spacing";
 
-const APP_VERSION = "1.0.0";
+import Constants from "expo-constants";
+
+const APP_VERSION = Constants.expoConfig?.version ?? "0.0.0";
 
 export default function AboutPage() {
   return (
