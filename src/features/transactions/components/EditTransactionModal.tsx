@@ -39,17 +39,7 @@ import { useCategoryStore } from "../../categories/stores/categoryStore";
 import { Colors } from "../../../theme/colors";
 import { Spacing } from "../../../theme/spacing";
 
-type Transaction = {
-  id: number;
-  account_id: number;
-  category_id: number;
-  type: "income" | "expense" | "transfer";
-  amount: number;
-  transaction_date: string;
-  note?: string | null;
-  payment_method?: string | null;
-  location?: string | null;
-};
+import { Transaction } from "../types/transaction";
 
 type EditTransactionModalProps = {
   visible: boolean;
@@ -68,7 +58,7 @@ export default function EditTransactionModal({
 
   const deleteTransaction = useTransactionStore(
     (state) => state.deleteTransaction
-  )
+  );
 
   const transactionLoading = useTransactionStore(
     (state) => state.loading
@@ -100,9 +90,14 @@ export default function EditTransactionModal({
     defaultValues: {
       type: "expense",
       amount: 0,
+
       category_id: 0,
-      account_id: 0,
+
+      from_account_id: null,
+      to_account_id: null,
+
       transaction_date: new Date(),
+
       note: "",
       payment_method: "",
       location: "",
@@ -117,15 +112,48 @@ export default function EditTransactionModal({
   } = methods;
 
   const transactionType = watch("type");
-  const selectedCategory = watch("category_id");
+
+  const selectedCategory =
+    watch("category_id");
+
+  const selectedFromAccount =
+    watch("from_account_id");
+
+  const isIncome =
+    transactionType === "income";
+
+  const isExpense =
+    transactionType === "expense";
+
+  const isTransfer =
+    transactionType === "transfer";
 
   const categories =
-    transactionType === "income"
+    isIncome
       ? incomeCategories
       : expenseCategories;
 
+  const accountOptions = accounts.map(
+    (account) => ({
+      label: account.name,
+      value: account.id,
+    })
+  );
+
+  const toAccountOptions =
+    accounts
+      .filter(
+        (account) =>
+          account.id !== selectedFromAccount
+      )
+      .map((account) => ({
+        label: account.name,
+        value: account.id,
+      }));
+
   /*
-   * Load data when the modal opens.
+   * Load accounts and categories
+   * when the modal opens.
    */
   useEffect(() => {
     if (!visible) {
@@ -141,8 +169,8 @@ export default function EditTransactionModal({
   ]);
 
   /*
-   * Populate the form whenever the selected
-   * transaction changes.
+   * Populate the form whenever the
+   * selected transaction changes.
    */
   useEffect(() => {
     if (!visible || !transaction) {
@@ -151,15 +179,27 @@ export default function EditTransactionModal({
 
     reset({
       type: transaction.type,
+
       amount: transaction.amount,
-      category_id: transaction.category_id,
-      account_id: transaction.account_id,
+
+      category_id:
+        transaction.category_id ?? 0,
+
+      from_account_id:
+        transaction.from_account_id ?? null,
+
+      to_account_id:
+        transaction.to_account_id ?? null,
+
       transaction_date: new Date(
         transaction.transaction_date
       ),
+
       note: transaction.note ?? "",
+
       payment_method:
         transaction.payment_method ?? "",
+
       location:
         transaction.location ?? "",
     });
@@ -170,18 +210,19 @@ export default function EditTransactionModal({
   ]);
 
   /*
-   * Make sure the selected category still belongs
-   * to the current transaction type.
+   * Make sure the selected category
+   * belongs to the current transaction type.
    */
   useEffect(() => {
-    if (!visible) {
+    if (!visible || isTransfer) {
       return;
     }
 
-    const categoryExists = categories.some(
-      (category) =>
-        category.id === selectedCategory
-    );
+    const categoryExists =
+      categories.some(
+        (category) =>
+          category.id === selectedCategory
+      );
 
     if (
       selectedCategory !== 0 &&
@@ -191,8 +232,70 @@ export default function EditTransactionModal({
     }
   }, [
     visible,
+    isTransfer,
     categories,
     selectedCategory,
+    setValue,
+  ]);
+
+  /*
+   * Keep account fields valid when
+   * switching transaction types.
+   */
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    if (isExpense) {
+      setValue(
+        "to_account_id",
+        null
+      );
+
+      return;
+    }
+
+    if (isIncome) {
+      setValue(
+        "from_account_id",
+        null
+      );
+    }
+  }, [
+    visible,
+    isExpense,
+    isIncome,
+    setValue,
+  ]);
+
+  /*
+   * Transfers cannot use the same
+   * account as both source and destination.
+   */
+  useEffect(() => {
+    if (!isTransfer) {
+      return;
+    }
+
+    const toAccountId =
+      methods.getValues(
+        "to_account_id"
+      );
+
+    if (
+      selectedFromAccount != null &&
+      selectedFromAccount === toAccountId
+    ) {
+      setValue(
+        "to_account_id",
+        null
+      );
+    }
+  }, [
+    isTransfer,
+    selectedFromAccount,
+    methods,
     setValue,
   ]);
 
@@ -204,7 +307,9 @@ export default function EditTransactionModal({
     onClose();
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (
+    id: number
+  ) => {
     Alert.alert(
       "Delete transaction?",
       "Are you sure you want to delete this transaction? This action will also update the account balance.",
@@ -218,7 +323,8 @@ export default function EditTransactionModal({
           style: "destructive",
           onPress: async () => {
             try {
-              const result = await deleteTransaction(id);
+              const result =
+                await deleteTransaction(id);
 
               if (!result) {
                 Alert.alert(
@@ -250,22 +356,38 @@ export default function EditTransactionModal({
     }
 
     try {
-      const result = await updateTransaction(
-        transaction.id,
-        {
-          account_id: data.account_id,
-          category_id: data.category_id,
-          type: data.type,
-          amount: data.amount,
-          transaction_date:
-            data.transaction_date.toISOString(),
-          note: data.note || undefined,
-          payment_method:
-            data.payment_method || undefined,
-          location:
-            data.location || undefined,
-        }
-      );
+      const result =
+        await updateTransaction(
+          transaction.id,
+          {
+            type: data.type,
+
+            amount: data.amount,
+
+            category_id:
+              data.category_id || undefined,
+
+            from_account_id:
+              data.from_account_id ?? null,
+
+            to_account_id:
+              data.to_account_id ?? null,
+
+            transaction_date:
+              data.transaction_date.toISOString(),
+
+            note:
+              data.note || undefined,
+
+            payment_method:
+              data.payment_method ||
+              undefined,
+
+            location:
+              data.location ||
+              undefined,
+          }
+        );
 
       if (!result) {
         Alert.alert(
@@ -285,12 +407,36 @@ export default function EditTransactionModal({
     }
   };
 
-  const isIncome =
-    transactionType === "income";
-    
   if (!transaction) {
     return null;
   }
+
+  const amountLabel =
+    isTransfer
+      ? "Transfer"
+      : isIncome
+        ? "Income"
+        : "Expense";
+
+  const amountHint =
+    isTransfer
+      ? "Amount to transfer"
+      : "Transaction amount";
+
+  const accountFieldName =
+    isIncome
+      ? "to_account_id"
+      : "from_account_id";
+
+  const accountLabel =
+    isIncome
+      ? "To account"
+      : "From account";
+
+  const accountPlaceholder =
+    isIncome
+      ? "Select destination account"
+      : "Select source account";
 
   return (
     <Modal
@@ -308,16 +454,19 @@ export default function EditTransactionModal({
         }
       >
         {/* Backdrop */}
+
         <Pressable
           style={styles.modalBackdrop}
           onPress={handleClose}
         />
 
         {/* Bottom sheet */}
+
         <View style={styles.modalContainer}>
           <View style={styles.modalHandle} />
 
           {/* Header */}
+
           <View style={styles.modalHeader}>
             <View style={styles.modalHeaderText}>
               <Text style={styles.modalTitle}>
@@ -332,7 +481,8 @@ export default function EditTransactionModal({
             <Pressable
               style={({ pressed }) => [
                 styles.closeButton,
-                pressed && styles.closeButtonPressed,
+                pressed &&
+                  styles.closeButtonPressed,
               ]}
               onPress={handleClose}
               disabled={transactionLoading}
@@ -350,37 +500,49 @@ export default function EditTransactionModal({
             <ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={styles.formContent}
+              contentContainerStyle={
+                styles.formContent
+              }
             >
               {/* Type */}
+
               <View style={styles.typeSection}>
                 <TransactionTypeToggle />
               </View>
 
               {/* Amount */}
+
               <View
                 style={[
                   styles.amountCard,
+
                   isIncome &&
                     styles.amountCardIncome,
                 ]}
               >
-                <View style={styles.amountHeader}>
-                  <View style={styles.amountHeaderText}>
-                    <Text style={styles.amountLabel}>
-                      {isIncome
-                        ? "Income"
-                        : "Expense"}
+                <View
+                  style={styles.amountHeader}
+                >
+                  <View
+                    style={styles.amountHeaderText}
+                  >
+                    <Text
+                      style={styles.amountLabel}
+                    >
+                      {amountLabel}
                     </Text>
 
-                    <Text style={styles.amountHint}>
-                      Transaction amount
+                    <Text
+                      style={styles.amountHint}
+                    >
+                      {amountHint}
                     </Text>
                   </View>
 
                   <View
                     style={[
                       styles.amountIcon,
+
                       isIncome
                         ? styles.incomeIcon
                         : styles.expenseIcon,
@@ -389,6 +551,7 @@ export default function EditTransactionModal({
                     <Text
                       style={[
                         styles.amountIconText,
+
                         isIncome
                           ? styles.incomeIconText
                           : styles.expenseIconText,
@@ -403,66 +566,143 @@ export default function EditTransactionModal({
               </View>
 
               {/* Details */}
-              <View style={styles.detailsCard}>
-                <View style={styles.field}>
-                  <AppSelect
-                    label="Category"
-                    name="category_id"
-                    control={methods.control}
-                    placeholder="Select category"
-                    options={categories.map(
-                      (category) => ({
-                        label: category.name,
-                        value: category.id,
-                      })
-                    )}
+
+              {isTransfer ? (
+                <View
+                  style={styles.detailsCard}
+                >
+                  <View style={styles.field}>
+                    <AppSelect
+                      label="From account"
+                      name="from_account_id"
+                      control={methods.control}
+                      placeholder="Select source account"
+                      options={accountOptions}
+                    />
+                  </View>
+
+                  <View
+                    style={styles.divider}
                   />
-                </View>
 
-                <View style={styles.divider} />
+                  <View style={styles.field}>
+                    <AppSelect
+                      label="To account"
+                      name="to_account_id"
+                      control={methods.control}
+                      placeholder="Select destination account"
+                      options={toAccountOptions}
+                    />
+                  </View>
 
-                <View style={styles.field}>
-                  <AppSelect
-                    label="Account"
-                    name="account_id"
-                    control={methods.control}
-                    placeholder="Select account"
-                    options={accounts.map(
-                      (account) => ({
-                        label: account.name,
-                        value: account.id,
-                      })
-                    )}
+                  <View
+                    style={styles.divider}
                   />
-                </View>
 
-                <View style={styles.divider} />
+                  <View
+                    style={styles.field}
+                  >
+                    <AppDatePicker
+                      label="Date"
+                      name="transaction_date"
+                      control={methods.control}
+                    />
+                  </View>
 
-                <View style={styles.field}>
-                  <AppDatePicker
-                    label="Date"
-                    name="transaction_date"
-                    control={methods.control}
+                  <View
+                    style={styles.divider}
                   />
-                </View>
 
-                <View style={styles.divider} />
-
-                <View style={styles.noteField}>
-                  <NoteInput />
+                  <View
+                    style={styles.noteField}
+                  >
+                    <NoteInput />
+                  </View>
                 </View>
-              </View>
+              ) : (
+                <View
+                  style={styles.detailsCard}
+                >
+                  {/* Category */}
+
+                  <View style={styles.field}>
+                    <AppSelect
+                      label="Category"
+                      name="category_id"
+                      control={methods.control}
+                      placeholder="Select category"
+                      options={categories.map(
+                        (category) => ({
+                          label:
+                            category.name,
+                          value:
+                            category.id,
+                        })
+                      )}
+                    />
+                  </View>
+
+                  <View
+                    style={styles.divider}
+                  />
+
+                  {/* Account */}
+
+                  <View style={styles.field}>
+                    <AppSelect
+                      label={accountLabel}
+                      name={accountFieldName}
+                      control={methods.control}
+                      placeholder={
+                        accountPlaceholder
+                      }
+                      options={accountOptions}
+                    />
+                  </View>
+
+                  <View
+                    style={styles.divider}
+                  />
+
+                  {/* Date */}
+
+                  <View style={styles.field}>
+                    <AppDatePicker
+                      label="Date"
+                      name="transaction_date"
+                      control={methods.control}
+                    />
+                  </View>
+
+                  <View
+                    style={styles.divider}
+                  />
+
+                  {/* Note */}
+
+                  <View
+                    style={styles.noteField}
+                  >
+                    <NoteInput />
+                  </View>
+                </View>
+              )}
 
               {/* Save */}
+
               <Pressable
                 style={({ pressed }) => [
                   styles.saveButton,
+
                   pressed &&
                     styles.saveButtonPressed,
+
                   transactionLoading &&
                     styles.saveButtonDisabled,
                 ]}
-                onPress={handleSubmit(onSubmit)}
+                onPress={
+                  handleSubmit(onSubmit)
+                }
                 disabled={transactionLoading}
               >
                 <Ionicons
@@ -475,7 +715,9 @@ export default function EditTransactionModal({
                   color="#FFFFFF"
                 />
 
-                <Text style={styles.saveButtonText}>
+                <Text
+                  style={styles.saveButtonText}
+                >
                   {transactionLoading
                     ? "Saving..."
                     : "Save changes"}
@@ -483,22 +725,36 @@ export default function EditTransactionModal({
               </Pressable>
 
               {/* Delete */}
+
               <Pressable
                 style={({ pressed }) => [
                   styles.deleteButton,
-                  pressed && styles.deleteButtonPressed,
-                  transactionLoading && styles.deleteButtonDisabled,
+
+                  pressed &&
+                    styles.deleteButtonPressed,
+
+                  transactionLoading &&
+                    styles.deleteButtonDisabled,
                 ]}
-                onPress={() => handleDelete(transaction.id)}
+                onPress={() =>
+                  handleDelete(transaction.id)
+                }
                 disabled={transactionLoading}
               >
                 <Ionicons
                   name="trash-outline"
                   size={16}
-                  color={Colors.danger ?? "#DC2626"}
+                  color={
+                    Colors.danger ??
+                    "#DC2626"
+                  }
                 />
 
-                <Text style={styles.deleteButtonText}>
+                <Text
+                  style={
+                    styles.deleteButtonText
+                  }
+                >
                   Delete transaction
                 </Text>
               </Pressable>
@@ -523,37 +779,26 @@ const styles = StyleSheet.create({
 
   modalContainer: {
     backgroundColor: Colors.background,
-
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-
     maxHeight: "90%",
-
     paddingTop: 7,
-
     overflow: "hidden",
   },
 
   modalHandle: {
     width: 34,
     height: 4,
-
     borderRadius: 4,
-
     alignSelf: "center",
-
     backgroundColor: Colors.textSecondary,
     opacity: 0.3,
-
     marginBottom: 8,
   },
-
-  /* Header */
 
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
-
     paddingHorizontal: Spacing.lg,
     paddingBottom: 10,
   },
@@ -571,7 +816,6 @@ const styles = StyleSheet.create({
 
   modalSubtitle: {
     marginTop: 1,
-
     fontSize: 11,
     color: Colors.textSecondary,
   },
@@ -579,21 +823,17 @@ const styles = StyleSheet.create({
   closeButton: {
     width: 34,
     height: 34,
-
     borderRadius: 10,
-
     alignItems: "center",
     justifyContent: "center",
-
     backgroundColor:
-      Colors.surface ?? "rgba(0, 0, 0, 0.05)",
+      Colors.surface ??
+      "rgba(0, 0, 0, 0.05)",
   },
 
   closeButtonPressed: {
     opacity: 0.6,
   },
-
-  /* Form */
 
   formContent: {
     paddingHorizontal: Spacing.lg,
@@ -601,24 +841,16 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
   },
 
-  /* Type */
-
   typeSection: {
     marginBottom: 8,
   },
 
-  /* Amount */
-
   amountCard: {
     backgroundColor: Colors.surface,
-
     borderRadius: 14,
-
     borderWidth: 1,
     borderColor: Colors.border,
-
     padding: 13,
-
     marginBottom: 9,
   },
 
@@ -630,7 +862,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-
     marginBottom: 6,
   },
 
@@ -646,7 +877,6 @@ const styles = StyleSheet.create({
 
   amountHint: {
     marginTop: 1,
-
     fontSize: 10,
     color: Colors.textSecondary,
   },
@@ -654,9 +884,7 @@ const styles = StyleSheet.create({
   amountIcon: {
     width: 32,
     height: 32,
-
     borderRadius: 9,
-
     alignItems: "center",
     justifyContent: "center",
   },
@@ -682,16 +910,11 @@ const styles = StyleSheet.create({
     color: Colors.success,
   },
 
-  /* Details */
-
   detailsCard: {
     backgroundColor: Colors.surface,
-
     borderRadius: 14,
-
     borderWidth: 1,
     borderColor: Colors.border,
-
     paddingHorizontal: 13,
   },
 
@@ -708,22 +931,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.border,
   },
 
-  /* Save */
-
   saveButton: {
     height: 46,
-
     borderRadius: 12,
-
     backgroundColor:
       Colors.primary ?? "#4F46E5",
-
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-
     gap: 6,
-
     marginTop: 10,
   },
 
@@ -737,24 +953,17 @@ const styles = StyleSheet.create({
 
   saveButtonText: {
     color: "#FFFFFF",
-
     fontSize: 14,
     fontWeight: "700",
   },
 
-  /* Delete */
-
   deleteButton: {
     height: 40,
-
     borderRadius: 11,
-
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-
     gap: 6,
-
     marginTop: 5,
   },
 
@@ -769,6 +978,7 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: Colors.danger ?? "#DC2626",
+    color:
+      Colors.danger ?? "#DC2626",
   },
 });

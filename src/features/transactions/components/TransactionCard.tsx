@@ -7,8 +7,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
-
-type TransactionType = "income" | "expense";
+import type { TransactionType } from "../types/transaction";
 
 interface TransactionCardProps {
   transaction: {
@@ -32,19 +31,35 @@ export default function TransactionCard({
   accountName,
   onPress,
 }: TransactionCardProps) {
-  const isIncome = transaction.type === "income";
+  const isIncome =
+    transaction.type === "income";
+
+  const isTransfer =
+    transaction.type === "transfer";
 
   const accentColor = isIncome
     ? "#15803D"
-    : "#DC2626";
+    : isTransfer
+      ? "#2563EB"
+      : "#DC2626";
 
   const iconBackground = isIncome
     ? "#F0FDF4"
-    : "#FEF2F2";
+    : isTransfer
+      ? "#EFF6FF"
+      : "#FEF2F2";
 
   const iconName = isIncome
     ? "arrow-down-outline"
-    : "arrow-up-outline";
+    : isTransfer
+      ? "swap-horizontal-outline"
+      : "arrow-up-outline";
+
+  const amountPrefix = isIncome
+    ? "+"
+    : isTransfer
+      ? ""
+      : "-";
 
   return (
     <TouchableOpacity
@@ -52,7 +67,7 @@ export default function TransactionCard({
       onPress={onPress}
       style={styles.card}
     >
-      {/* Category Icon */}
+      {/* Transaction Icon */}
       <View
         style={[
           styles.iconContainer,
@@ -74,7 +89,10 @@ export default function TransactionCard({
           style={styles.category}
           numberOfLines={1}
         >
-          {categoryName || "Uncategorized"}
+          {categoryName ||
+            (isTransfer
+              ? "Transfer"
+              : "Uncategorized")}
         </Text>
 
         <View style={styles.metaRow}>
@@ -123,7 +141,7 @@ export default function TransactionCard({
             { color: accentColor },
           ]}
         >
-          {isIncome ? "+" : "-"}₹
+          {amountPrefix}₹
           {transaction.amount.toLocaleString(
             "en-IN",
             {

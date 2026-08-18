@@ -1,8 +1,14 @@
+export type TransactionType =
+  | "income"
+  | "expense"
+  | "transfer";
+
 export interface Transaction {
   id: number;
-  account_id: number;
-  category_id: number;
-  type: "expense" | "income" | "transfer";
+  from_account_id: number | null;
+  to_account_id: number | null;
+  category_id: number | null;
+  type: TransactionType;
   amount: number;
   note: string | null;
   transaction_date: string;
@@ -14,12 +20,13 @@ export interface Transaction {
 }
 
 export interface CreateTransactionDTO {
-  account_id: number;
-  category_id: number;
-  type: "expense" | "income" | "transfer";
+  from_account_id?: number | null;
+  to_account_id?: number | null;
+  category_id?: number | null;
+  type: TransactionType;
   amount: number;
-  note?: string;
+  note?: string | null;
   transaction_date: string;
-  payment_method?: string;
-  location?: string;
+  payment_method?: string | null;
+  location?: string | null;
 }

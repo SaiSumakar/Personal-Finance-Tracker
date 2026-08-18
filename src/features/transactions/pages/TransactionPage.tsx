@@ -7,8 +7,13 @@ import {
   TouchableOpacity,
   SectionList,
 } from "react-native";
+
 import { Ionicons } from "@expo/vector-icons";
-import { format, isToday, isYesterday } from "date-fns";
+import {
+  format,
+  isToday,
+  isYesterday,
+} from "date-fns";
 
 import TransactionCard from "../components/TransactionCard";
 import EditTransactionModal from "../components/EditTransactionModal";
@@ -49,13 +54,20 @@ export default function TransactionPage() {
   );
 
   const categories = useMemo(
-    () => [...expenseCategories, ...incomeCategories],
-    [expenseCategories, incomeCategories]
+    () => [
+      ...expenseCategories,
+      ...incomeCategories,
+    ],
+    [
+      expenseCategories,
+      incomeCategories,
+    ]
   );
 
-  const [editingTransaction, setEditingTransaction] = useState<
-    (typeof transactions)[number] | null
-  >(null);
+  const [editingTransaction, setEditingTransaction] =
+    useState<
+      (typeof transactions)[number] | null
+    >(null);
 
   useEffect(() => {
     loadTransactions();
@@ -70,42 +82,68 @@ export default function TransactionPage() {
   const sortedTransactions = useMemo(() => {
     return [...transactions].sort(
       (a, b) =>
-        new Date(b.transaction_date).getTime() -
-        new Date(a.transaction_date).getTime()
+        new Date(
+          b.transaction_date
+        ).getTime() -
+        new Date(
+          a.transaction_date
+        ).getTime()
     );
   }, [transactions]);
 
   const filteredTransactions = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query =
+      search.trim().toLowerCase();
 
     if (!query) {
       return sortedTransactions;
     }
 
-    return sortedTransactions.filter((transaction) => {
-      const category = categories.find(
-        (item) => item.id === transaction.category_id
-      );
+    return sortedTransactions.filter(
+      (transaction) => {
+        const category =
+          categories.find(
+            (item) =>
+              item.id ===
+              transaction.category_id
+          );
 
-      const account = accounts.find(
-        (item) => item.id === transaction.account_id
-      );
+        const fromAccount =
+          accounts.find(
+            (item) =>
+              item.id ===
+              transaction.from_account_id
+          );
 
-      const categoryName =
-        category?.name?.toLowerCase() || "";
+        const toAccount =
+          accounts.find(
+            (item) =>
+              item.id ===
+              transaction.to_account_id
+          );
 
-      const accountName =
-        account?.name?.toLowerCase() || "";
+        const categoryName =
+          category?.name?.toLowerCase() || "";
 
-      const note =
-        transaction.note?.toLowerCase() || "";
+        const fromAccountName =
+          fromAccount?.name?.toLowerCase() ||
+          "";
 
-      return (
-        categoryName.includes(query) ||
-        accountName.includes(query) ||
-        note.includes(query)
-      );
-    });
+        const toAccountName =
+          toAccount?.name?.toLowerCase() ||
+          "";
+
+        const note =
+          transaction.note?.toLowerCase() || "";
+
+        return (
+          categoryName.includes(query) ||
+          fromAccountName.includes(query) ||
+          toAccountName.includes(query) ||
+          note.includes(query)
+        );
+      }
+    );
   }, [
     search,
     sortedTransactions,
@@ -113,19 +151,35 @@ export default function TransactionPage() {
     accounts,
   ]);
 
-  const getCategoryName = (categoryId?: number) => {
+  const getCategoryName = (
+    categoryId?: number | null
+  ) => {
+    if (categoryId == null) {
+      return undefined;
+    }
+
     return categories.find(
-      (category) => category.id === categoryId
+      (category) =>
+        category.id === categoryId
     )?.name;
   };
 
-  const getAccountName = (accountId?: number) => {
+  const getAccountName = (
+    accountId?: number | null
+  ) => {
+    if (accountId == null) {
+      return undefined;
+    }
+
     return accounts.find(
-      (account) => account.id === accountId
+      (account) =>
+        account.id === accountId
     )?.name;
   };
 
-  const formatSectionTitle = (dateString: string) => {
+  const formatSectionTitle = (
+    dateString: string
+  ) => {
     const date = new Date(dateString);
 
     if (isToday(date)) {
@@ -136,7 +190,10 @@ export default function TransactionPage() {
       return "Yesterday";
     }
 
-    return format(date, "dd MMM yyyy");
+    return format(
+      date,
+      "dd MMM yyyy"
+    );
   };
 
   const transactionSections = useMemo(() => {
@@ -147,26 +204,33 @@ export default function TransactionPage() {
 
     const sections: Section[] = [];
 
-    filteredTransactions.forEach((transaction) => {
-      const title = formatSectionTitle(
-        transaction.transaction_date
-      );
+    filteredTransactions.forEach(
+      (transaction) => {
+        const title =
+          formatSectionTitle(
+            transaction.transaction_date
+          );
 
-      const lastSection =
-        sections[sections.length - 1];
+        const lastSection =
+          sections[
+            sections.length - 1
+          ];
 
-      if (
-        lastSection &&
-        lastSection.title === title
-      ) {
-        lastSection.data.push(transaction);
-      } else {
-        sections.push({
-          title,
-          data: [transaction],
-        });
+        if (
+          lastSection &&
+          lastSection.title === title
+        ) {
+          lastSection.data.push(
+            transaction
+          );
+        } else {
+          sections.push({
+            title,
+            data: [transaction],
+          });
+        }
       }
-    });
+    );
 
     return sections;
   }, [filteredTransactions]);
@@ -174,16 +238,33 @@ export default function TransactionPage() {
   const totalAmount = useMemo(() => {
     return filteredTransactions.reduce(
       (total, transaction) => {
-        return transaction.type === "income"
-          ? total + transaction.amount
-          : total - transaction.amount;
+        if (transaction.type === "income") {
+          return (
+            total +
+            transaction.amount
+          );
+        }
+
+        if (transaction.type === "expense") {
+          return (
+            total -
+            transaction.amount
+          );
+        }
+
+        // Transfers do not affect the overall net total.
+        return total;
       },
       0
     );
   }, [filteredTransactions]);
 
-  const formatCurrency = (value: number) => {
-    return `₹${Math.abs(value).toLocaleString("en-IN", {
+  const formatCurrency = (
+    value: number
+  ) => {
+    return `₹${Math.abs(
+      value
+    ).toLocaleString("en-IN", {
       maximumFractionDigits: 0,
     })}`;
   };
@@ -191,32 +272,64 @@ export default function TransactionPage() {
   const renderTransaction = ({
     item,
   }: {
-    item: (typeof filteredTransactions)[number];
+    item: (
+      typeof filteredTransactions
+    )[number];
   }) => {
+    const accountId =
+      item.type === "income"
+        ? item.to_account_id
+        : item.from_account_id;
+
+    const accountName =
+      item.type === "transfer"
+        ? `${getAccountName(
+            item.from_account_id
+          ) ?? "Unknown"} → ${
+            getAccountName(
+              item.to_account_id
+            ) ?? "Unknown"
+          }`
+        : getAccountName(accountId);
+
     const cardTransaction = {
       id: item.id.toString(),
+
       amount: item.amount,
+
       type:
         item.type === "income"
           ? ("income" as const)
           : ("expense" as const),
+
       date: item.transaction_date,
-      note: item.note ?? undefined,
+
+      note:
+        item.type === "transfer"
+          ? item.note ??
+            `Transfer to ${getAccountName(
+              item.to_account_id
+            ) ?? "account"}`
+          : item.note ?? undefined,
+
       categoryId:
-        item.category_id.toString(),
+        item.category_id?.toString() ?? "",
+
       accountId:
-        item.account_id.toString(),
+        accountId?.toString() ?? "",
     };
 
     return (
       <TransactionCard
         transaction={cardTransaction}
-        categoryName={getCategoryName(
-          item.category_id
-        )}
-        accountName={getAccountName(
-          item.account_id
-        )}
+        categoryName={
+          item.type === "transfer"
+            ? "Transfer"
+            : getCategoryName(
+                item.category_id
+              )
+        }
+        accountName={accountName}
         onPress={() => {
           setEditingTransaction(item);
         }}
@@ -227,6 +340,7 @@ export default function TransactionPage() {
   return (
     <View style={styles.container}>
       {/* Search Header */}
+
       <View style={styles.toolbar}>
         <View style={styles.searchContainer}>
           <Ionicons
@@ -246,7 +360,9 @@ export default function TransactionPage() {
 
           {search.length > 0 && (
             <TouchableOpacity
-              onPress={() => setSearch("")}
+              onPress={() =>
+                setSearch("")
+              }
               hitSlop={10}
             >
               <Ionicons
@@ -274,6 +390,7 @@ export default function TransactionPage() {
       </View>
 
       {/* Summary */}
+
       <View style={styles.summaryRow}>
         <View>
           <Text style={styles.summaryLabel}>
@@ -291,7 +408,9 @@ export default function TransactionPage() {
         </View>
 
         {filteredTransactions.length > 0 && (
-          <View style={styles.netAmountContainer}>
+          <View
+            style={styles.netAmountContainer}
+          >
             <Text style={styles.netLabel}>
               Net
             </Text>
@@ -307,7 +426,9 @@ export default function TransactionPage() {
                 },
               ]}
             >
-              {totalAmount >= 0 ? "+" : "-"}
+              {totalAmount >= 0
+                ? "+"
+                : "-"}
               {formatCurrency(totalAmount)}
             </Text>
           </View>
@@ -315,6 +436,7 @@ export default function TransactionPage() {
       </View>
 
       {/* Transaction List */}
+
       <SectionList
         sections={transactionSections}
         keyExtractor={(item) =>
@@ -324,12 +446,18 @@ export default function TransactionPage() {
         renderSectionHeader={({
           section: { title, data },
         }) => (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
+          <View
+            style={styles.sectionHeader}
+          >
+            <Text
+              style={styles.sectionTitle}
+            >
               {title}
             </Text>
 
-            <Text style={styles.sectionCount}>
+            <Text
+              style={styles.sectionCount}
+            >
               {data.length}
             </Text>
           </View>
@@ -343,11 +471,19 @@ export default function TransactionPage() {
         keyboardShouldPersistTaps="handled"
         stickySectionHeadersEnabled={false}
         ItemSeparatorComponent={() => (
-          <View style={styles.itemSeparator} />
+          <View
+            style={styles.itemSeparator}
+          />
         )}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
+          <View
+            style={styles.emptyContainer}
+          >
+            <View
+              style={
+                styles.emptyIconContainer
+              }
+            >
               <Ionicons
                 name={
                   search
@@ -359,13 +495,19 @@ export default function TransactionPage() {
               />
             </View>
 
-            <Text style={styles.emptyTitle}>
+            <Text
+              style={styles.emptyTitle}
+            >
               {search
                 ? "No transactions found"
                 : "No transactions yet"}
             </Text>
 
-            <Text style={styles.emptyDescription}>
+            <Text
+              style={
+                styles.emptyDescription
+              }
+            >
               {search
                 ? "Try another category, account, or keyword."
                 : "Transactions you add will appear here."}
@@ -373,11 +515,19 @@ export default function TransactionPage() {
 
             {search.length > 0 && (
               <TouchableOpacity
-                style={styles.clearSearchButton}
-                onPress={() => setSearch("")}
+                style={
+                  styles.clearSearchButton
+                }
+                onPress={() =>
+                  setSearch("")
+                }
                 activeOpacity={0.75}
               >
-                <Text style={styles.clearSearchText}>
+                <Text
+                  style={
+                    styles.clearSearchText
+                  }
+                >
                   Clear search
                 </Text>
               </TouchableOpacity>
@@ -387,8 +537,12 @@ export default function TransactionPage() {
       />
 
       <EditTransactionModal
-        visible={editingTransaction !== null}
-        transaction={editingTransaction}
+        visible={
+          editingTransaction !== null
+        }
+        transaction={
+          editingTransaction
+        }
         onClose={() => {
           setEditingTransaction(null);
         }}

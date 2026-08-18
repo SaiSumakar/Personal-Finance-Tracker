@@ -1,14 +1,9 @@
 import { getDatabase } from "../database";
 
-import { migrate as migratev1 } from "./000_initial_schema"
-import { migrate as migratev2 } from "./001_add_delete_columns"
-import { migrate as migratev3 } from "./002_add_profile"
-import { migrate as migratev4 } from "./003_account_current_balance"
-
+import { migrate as migratev1 } from "./000_initial_schema";
 import { seedDatabase } from "../seeds/defaultCategories";
 
-// latest
-const DATABASE_VERSION = 3.5;
+const DATABASE_VERSION = 1;
 
 export async function migrateDatabase() {
   const db = await getDatabase();
@@ -17,10 +12,10 @@ export async function migrateDatabase() {
     user_version: number;
   }>("PRAGMA user_version");
 
-  
   const currentVersion = result?.user_version ?? 0;
-  
-  console.log("current db version", currentVersion, DATABASE_VERSION);
+
+  console.log("Current DB version:", currentVersion);
+
   if (currentVersion >= DATABASE_VERSION) {
     return;
   }
@@ -28,28 +23,19 @@ export async function migrateDatabase() {
   await db.execAsync("BEGIN");
 
   try {
-    if (currentVersion < 1) {
-      await migratev1(db);
-      // Seed only when creating schema for the first time
-      await seedDatabase();
-    }
+    await migratev1(db);
+    await seedDatabase();
 
-    if (currentVersion < 2) {
-      await migratev2(db);
-    }
-
-    if (currentVersion < 3.1) {
-      await migratev3(db);
-    }
-    if(currentVersion < 3.5) {
-      await migratev4(db);
-    }
     await db.execAsync(`
       PRAGMA user_version = ${DATABASE_VERSION};
     `);
+
     await db.execAsync("COMMIT");
+
+    console.log("Database initialized successfully");
   } catch (error) {
     await db.execAsync("ROLLBACK");
+    console.error("Database migration failed:", error);
     throw error;
   }
 }

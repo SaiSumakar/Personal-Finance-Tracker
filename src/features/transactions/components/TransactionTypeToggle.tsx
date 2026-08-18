@@ -18,6 +18,12 @@ export default function TransactionTypeToggle() {
 
   const selectedType = watch("type");
 
+  const handleTypeChange = (
+    type: TransactionFormValues["type"]
+  ) => {
+    setValue("type", type);
+  };
+
   return (
     <View style={styles.container}>
       <Pressable
@@ -27,7 +33,7 @@ export default function TransactionTypeToggle() {
             styles.active,
         ]}
         onPress={() =>
-          setValue("type", "expense")
+          handleTypeChange("expense")
         }
       >
         <Text
@@ -48,7 +54,7 @@ export default function TransactionTypeToggle() {
             styles.active,
         ]}
         onPress={() =>
-          setValue("type", "income")
+          handleTypeChange("income")
         }
       >
         <Text
@@ -59,6 +65,27 @@ export default function TransactionTypeToggle() {
           ]}
         >
           Income
+        </Text>
+      </Pressable>
+
+      <Pressable
+        style={[
+          styles.button,
+          selectedType === "transfer" &&
+            styles.active,
+        ]}
+        onPress={() =>
+          handleTypeChange("transfer")
+        }
+      >
+        <Text
+          style={[
+            styles.text,
+            selectedType === "transfer" &&
+              styles.activeText,
+          ]}
+        >
+          Transfer
         </Text>
       </Pressable>
     </View>
@@ -79,6 +106,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     alignItems: "center",
+    justifyContent: "center",
   },
 
   active: {
@@ -88,6 +116,7 @@ const styles = StyleSheet.create({
   text: {
     color: Colors.text,
     fontWeight: "600",
+    fontSize: 13,
   },
 
   activeText: {

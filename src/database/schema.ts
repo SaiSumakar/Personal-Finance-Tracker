@@ -60,9 +60,11 @@ CREATE TABLE IF NOT EXISTS transactions (
 
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    account_id INTEGER NOT NULL,
+    from_account_id INTEGER,
 
-    category_id INTEGER NOT NULL,
+    to_account_id INTEGER,
+
+    category_id INTEGER,
 
     type TEXT NOT NULL CHECK (type IN ('expense', 'income', 'transfer')),
 
@@ -82,7 +84,12 @@ CREATE TABLE IF NOT EXISTS transactions (
 
     deleted_at TEXT,
 
-    FOREIGN KEY(account_id)
+    FOREIGN KEY(from_account_id)
+        REFERENCES accounts(id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+
+    FOREIGN KEY(to_account_id)
         REFERENCES accounts(id)
         ON UPDATE CASCADE
         ON DELETE RESTRICT,
@@ -90,7 +97,26 @@ CREATE TABLE IF NOT EXISTS transactions (
     FOREIGN KEY(category_id)
         REFERENCES categories(id)
         ON UPDATE CASCADE
-        ON DELETE RESTRICT
+        ON DELETE RESTRICT,
+
+    CHECK (
+        (type = 'income'
+            AND from_account_id IS NULL
+            AND to_account_id IS NOT NULL)
+
+        OR
+
+        (type = 'expense'
+            AND from_account_id IS NOT NULL
+            AND to_account_id IS NULL)
+
+        OR
+
+        (type = 'transfer'
+            AND from_account_id IS NOT NULL
+            AND to_account_id IS NOT NULL
+            AND from_account_id != to_account_id)
+    )
 );
 `;
 
@@ -117,8 +143,11 @@ export const CREATE_INDEXES = `
 CREATE INDEX IF NOT EXISTS idx_transactions_date
 ON transactions(transaction_date);
 
-CREATE INDEX IF NOT EXISTS idx_transactions_account
-ON transactions(account_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_from_account
+ON transactions(from_account_id);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_to_account
+ON transactions(to_account_id);
 
 CREATE INDEX IF NOT EXISTS idx_transactions_category
 ON transactions(category_id);
