@@ -244,7 +244,7 @@ export default function AccountsSettingsPage() {
             {activeAccounts.length > 0 && (
               <View style={styles.accountSection}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>Accounts</Text>
+                  <Text style={styles.sectionTitle}>Active Accounts</Text>
 
                   <Text style={styles.accountCount}>
                     {activeAccounts.length}
@@ -608,7 +608,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     color: Colors.textSecondary,
-    textTransform: "uppercase",
     letterSpacing: 0.6,
   },
 
