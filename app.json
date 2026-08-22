@@ -14,7 +14,6 @@
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/icon.png",
-        "backgroundImage": "./assets/icon.png",
         "monochromeImage": "./assets/icon.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -45,7 +44,8 @@
           }
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-splash-screen"
     ],
     "extra": {
       "router": {},
