@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import settingsService from "../services/settingsService";
-import type { SettingsBackup } from "../services/settingsService";
+import type { ImportMode, SettingsBackup, ValidBackup } from "../services/settingsService";
 import {
   Settings,
   UpdateSettingsDTO,
@@ -17,6 +17,7 @@ interface SettingsStore {
   lastExportedAt: string | null;
 
   exportBackup: () => Promise<SettingsBackup | null>;
+  importBackup: (backup: ValidBackup, mode: ImportMode) => Promise<boolean>;
   loadSettings: () => Promise<void>;
   updateSettings: (
     dto: UpdateSettingsDTO
@@ -55,6 +56,26 @@ export const useSettingsStore =
       });
 
       return result.data;
+    },
+
+    async importBackup(backup, mode) {
+      set({ loading: true, error: null });
+      try {
+        await settingsService.importBackup(backup, mode);
+        const settings = await settingsService.getSettings();
+        set({
+          loading: false,
+          settings: settings.success ? settings.data : DEFAULT_SETTINGS,
+          error: settings.success ? null : settings.error.message,
+        });
+        return settings.success;
+      } catch (error) {
+        set({
+          loading: false,
+          error: error instanceof Error ? error.message : "Failed to import backup",
+        });
+        return false;
+      }
     },
 
     async loadSettings() {

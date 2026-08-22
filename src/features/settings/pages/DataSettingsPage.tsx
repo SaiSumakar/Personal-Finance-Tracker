@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Platform,
   ActivityIndicator,
   Alert,
   Pressable,
@@ -10,16 +11,25 @@ import {
 } from "react-native";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import * as DocumentPicker from "expo-document-picker";
 
 import { useSettingsStore } from "../stores/settingsStore";
+import settingsService, { type BackupPreview, type ImportMode } from "../services/settingsService";
+import { useAccountStore } from "@/features/accounts/stores/accountStore";
+import { useCategoryStore } from "@/features/categories/stores/categoryStore";
+import { useTransactionStore } from "@/features/transactions/stores/transactionStore";
+import { useProfileStore } from "@/features/profile/stores/profileStore";
 
 export default function DataBackupSettingsPage() {
   const {
     isExporting: isPreparingExport,
     lastExportedAt,
     exportBackup,
+    importBackup,
   } = useSettingsStore();
   const [isSavingExport, setIsSavingExport] = useState(false);
+  const [preview, setPreview] = useState<BackupPreview | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const isExporting = isPreparingExport || isSavingExport;
 
   const handleExportJson = async () => {
@@ -46,37 +56,167 @@ export default function DataBackupSettingsPage() {
 
       const fileName = `finance-data-${date}.json`;
 
-      // Create the file inside the app's document directory
-      const file = new File(Paths.document, fileName);
+      // Create the file temporarily inside the app
+      const file = new File(Paths.cache, fileName);
 
-      // Write JSON data to the file
+      // Write the backup JSON
       file.write(backup.json);
 
+      // Check whether the native sharing dialog is available
       const sharingAvailable = await Sharing.isAvailableAsync();
 
-      if (sharingAvailable) {
-        await Sharing.shareAsync(file.uri, {
-          mimeType: "application/json",
-          dialogTitle: "Export Financial Data",
-          UTI: "public.json",
-        });
-      } else {
+      if (!sharingAvailable) {
         Alert.alert(
-          "Export complete",
-          `Your JSON export has been created successfully.\n\n${file.uri}`
+          "Export failed",
+          "File sharing is not available on this device."
         );
+        return;
       }
 
+      // Open Android/iOS system share sheet
+      await Sharing.shareAsync(file.uri, {
+        mimeType: "application/json",
+        dialogTitle: "Save Financial Data Backup",
+        UTI: "public.json",
+      });
+
+      Alert.alert(
+        "Export ready",
+        "Choose Downloads or your preferred location in the save/share menu."
+      );
     } catch (error) {
       console.error("Failed to export data:", error);
 
       Alert.alert(
         "Export failed",
-        "We couldn't export your data. Please try again."
+        error instanceof Error
+          ? error.message
+          : "We couldn't export your data. Please try again."
       );
     } finally {
       setIsSavingExport(false);
     }
+  };
+
+const handlePickBackup = async () => {
+  if (isImporting) return;
+
+  try {
+    const pickResult = await File.pickFileAsync({
+      multipleFiles: false,
+      mimeTypes: ["application/json", "text/json"],
+    });
+
+    console.log("Pick result:", pickResult);
+
+    if (pickResult.canceled) {
+      return;
+    }
+
+    // The actual File is inside .result
+    const file = pickResult.result;
+
+    console.log("Picked file URI:", file.uri);
+    console.log("Exists:", file.exists);
+    console.log("Name:", file.name);
+    console.log("Size:", file.size);
+
+    if (!file.exists) {
+      throw new Error(
+        "The selected backup file could not be accessed."
+      );
+    }
+
+    const json = await file.text();
+
+    if (!json.trim()) {
+      throw new Error(
+        "The selected backup file is empty."
+      );
+    }
+
+    const backupPreview =
+      await settingsService.previewBackup(json);
+
+    setPreview(backupPreview);
+
+  } catch (error) {
+    console.error("Import error:", error);
+
+    setPreview(null);
+
+    Alert.alert(
+      "Can't import this backup",
+      error instanceof Error
+        ? error.message
+        : "Please choose a valid finance backup JSON file."
+    );
+  }
+};
+
+  const refreshAppState = async () => {
+    await Promise.all([
+      useAccountStore.getState().loadAccounts(),
+      useCategoryStore.getState().loadCategories(),
+      useTransactionStore.getState().loadTransactions(),
+      useTransactionStore.getState().loadRecentTransactions(),
+      useProfileStore.getState().loadProfile(),
+    ]);
+  };
+
+  const confirmImport = (mode: ImportMode) => {
+    if (!preview || isImporting) return;
+    const isReplace = mode === "replace";
+    Alert.alert(
+      isReplace ? "Replace current data?" : "Merge backup data?",
+      isReplace
+        ? "This permanently removes your current app data and replaces it with this backup."
+        : "Only non-conflicting data will be added. Existing data will not be overwritten.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: isReplace ? "Replace data" : "Merge data",
+          style: isReplace ? "destructive" : "default",
+          onPress: async () => {
+            setIsImporting(true);
+
+            try {
+              const imported = await importBackup(
+                preview.backup,
+                mode
+              );
+
+              if (imported) {
+                await refreshAppState();
+                setPreview(null);
+
+                Alert.alert(
+                  "Import complete",
+                  "Your backup has been imported successfully."
+                );
+              } else {
+                Alert.alert(
+                  "Import failed",
+                  useSettingsStore.getState().error ??
+                    "Your current data was not changed."
+                );
+              }
+            } catch (error) {
+              console.error("Import failed:", error);
+
+              Alert.alert(
+                "Import failed",
+                error instanceof Error
+                  ? error.message
+                  : "An unexpected error occurred while importing your backup."
+              );
+            } finally {
+              setIsImporting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -157,16 +297,56 @@ export default function DataBackupSettingsPage() {
 
       <Text style={styles.sectionLabel}>IMPORT</Text>
 
-      <View style={styles.comingSoonCard}>
-        <Text style={styles.comingSoonTitle}>
-          Import data
-        </Text>
-
+      <View style={styles.importCard}>
+        <Text style={styles.comingSoonTitle}>Import data</Text>
         <Text style={styles.comingSoonText}>
-          Restore or import your financial data from a JSON file.
-          Coming soon.
+          Restore your financial data from a versioned JSON backup.
         </Text>
+        <Pressable
+          onPress={handlePickBackup}
+          disabled={isImporting}
+          style={({ pressed }) => [styles.importButton, pressed && !isImporting && styles.exportButtonPressed]}
+        >
+          <Text style={styles.exportButtonText}>Choose backup JSON</Text>
+        </Pressable>
       </View>
+
+      {preview && (
+        <View style={styles.previewCard}>
+          <Text style={styles.cardTitle}>
+            {preview.hasOnlyStarterData ? "Import Backup" : "You already have data"}
+          </Text>
+          <Text style={styles.cardDescription}>
+            {preview.hasOnlyStarterData
+              ? "You currently only have starter data. Importing this backup will replace the current data."
+              : "You already have data in this app. Choose how you want to import this backup."}
+          </Text>
+          <View style={styles.previewList}>
+            <Text style={styles.dataItem}>Accounts: {preview.counts.accounts}</Text>
+            <Text style={styles.dataItem}>Categories: {preview.counts.categories}</Text>
+            <Text style={styles.dataItem}>Transactions: {preview.counts.transactions}</Text>
+            <Text style={styles.dataItem}>Settings: {preview.counts.settings}</Text>
+            {preview.exportedAt && <Text style={styles.dataItem}>Exported: {new Date(preview.exportedAt).toLocaleString()}</Text>}
+            <Text style={styles.dataItem}>Backup version: {preview.backup.version}{preview.appVersion ? ` • App ${preview.appVersion}` : ""}</Text>
+          </View>
+          {!preview.hasOnlyStarterData && (
+            <Text style={styles.replaceWarning}>
+              Replacing removes all current app data and replaces it with this backup. It is recommended over merge.
+            </Text>
+          )}
+          <Pressable disabled={isImporting} onPress={() => confirmImport("replace")} style={styles.replaceButton}>
+            {isImporting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.exportButtonText}>{preview.hasOnlyStarterData ? "Replace current data" : "Replace complete data"}</Text>}
+          </Pressable>
+          {!preview.hasOnlyStarterData && (
+            <Pressable disabled={isImporting} onPress={() => confirmImport("merge")} style={styles.mergeButton}>
+              <Text style={styles.mergeButtonText}>Merge data</Text>
+            </Pressable>
+          )}
+          <Pressable disabled={isImporting} onPress={() => setPreview(null)} style={styles.cancelButton}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </Pressable>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -327,13 +507,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  comingSoonCard: {
+  importCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 18,
     padding: 20,
     borderWidth: 1,
     borderColor: "#EAEAEA",
-    opacity: 0.7,
+    marginBottom: 20,
   },
 
   comingSoonTitle: {
@@ -348,4 +528,58 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: "#6B7280",
   },
+
+  importButton: {
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#111111",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 18,
+  },
+
+  previewCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#EAEAEA",
+  },
+
+  previewList: {
+    backgroundColor: "#F8F8F8",
+    borderRadius: 12,
+    padding: 14,
+    gap: 6,
+    marginVertical: 16,
+  },
+
+  replaceWarning: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#8B3A00",
+    marginBottom: 16,
+  },
+
+  replaceButton: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: "#111111",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  mergeButton: {
+    height: 50,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+
+  mergeButtonText: { fontSize: 15, fontWeight: "700", color: "#374151" },
+  cancelButton: { alignItems: "center", paddingTop: 16, paddingBottom: 2 },
+  cancelButtonText: { fontSize: 15, fontWeight: "600", color: "#6B7280" },
 });
