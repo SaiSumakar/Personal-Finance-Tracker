@@ -1,10 +1,17 @@
 import settingsRepository from "@/database/repositories/settingsRepository";
 import accountRepository from "@/database/repositories/accountRepository";
 
+import Constants from "expo-constants";
+
 import {
   Settings,
   UpdateSettingsDTO,
 } from "../types/settings";
+
+export type SettingsBackup = {
+  json: string;
+  exportedAt: string;
+};
 
 import {
   SUPPORTED_CURRENCIES,
@@ -17,6 +24,41 @@ import {
 } from "@/constants/dateFormat";
 
 class SettingsService {
+  async exportBackup() {
+    try {
+      const data = await settingsRepository.getBackupData();
+      const exportedAt = new Date().toISOString();
+
+      return {
+        success: true as const,
+        data: {
+          json: JSON.stringify(
+            {
+              format: "trace-export",
+              version: 1,
+              exported_at: exportedAt,
+              app_version: Constants.expoConfig?.version ?? "0.0.0",
+              data,
+            },
+            null,
+            2
+          ),
+          exportedAt,
+        } satisfies SettingsBackup,
+      };
+    } catch (error) {
+      return {
+        success: false as const,
+        error: {
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to export data",
+        },
+      };
+    }
+  }
+
   async getSettings() {
     try {
       const settings =

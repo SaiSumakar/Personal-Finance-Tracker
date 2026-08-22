@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import settingsService from "../services/settingsService";
+import type { SettingsBackup } from "../services/settingsService";
 import {
   Settings,
   UpdateSettingsDTO,
@@ -12,7 +13,10 @@ interface SettingsStore {
   settings: Settings;
   loading: boolean;
   error: string | null;
+  isExporting: boolean;
+  lastExportedAt: string | null;
 
+  exportBackup: () => Promise<SettingsBackup | null>;
   loadSettings: () => Promise<void>;
   updateSettings: (
     dto: UpdateSettingsDTO
@@ -24,6 +28,34 @@ export const useSettingsStore =
     settings: DEFAULT_SETTINGS,
     loading: false,
     error: null,
+    isExporting: false,
+    lastExportedAt: null,
+
+    async exportBackup() {
+      set({
+        isExporting: true,
+        error: null,
+      });
+
+      const result = await settingsService.exportBackup();
+
+      if (!result.success) {
+        set({
+          isExporting: false,
+          error: result.error.message,
+        });
+
+        return null;
+      }
+
+      set({
+        isExporting: false,
+        lastExportedAt: result.data.exportedAt,
+        error: null,
+      });
+
+      return result.data;
+    },
 
     async loadSettings() {
       set({

@@ -5,6 +5,72 @@ import {
   UpdateSettingsDTO,
 } from "@/features/settings/types/settings";
 
+export type BackupData = {
+  profile: Profile | null;
+  settings: Setting[];
+  accounts: Account[];
+  categories: Category[];
+  transactions: Transaction[];
+};
+
+type Profile = {
+  id: number;
+  preferred_name: string;
+  picture_uri: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type Setting = {
+  key: string;
+  value: string | null;
+};
+
+type Account = {
+  id: number;
+  name: string;
+  type: string;
+  currency: string;
+  opening_balance: number;
+  current_balance: number;
+  color: string | null;
+  icon: string | null;
+  is_archived: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+type Category = {
+  id: number;
+  name: string;
+  type: "income" | "expense";
+  icon: string | null;
+  color: string | null;
+  parent_id: number | null;
+  is_default: number;
+  is_archived: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+type Transaction = {
+  id: number;
+  from_account_id: number | null;
+  to_account_id: number | null;
+  category_id: number | null;
+  type: "income" | "expense" | "transfer";
+  amount: number;
+  note: string | null;
+  transaction_date: string;
+  payment_method: string | null;
+  location: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
 class SettingsRepository extends BaseRepository {
   /**
    * Get all application settings.
@@ -71,6 +137,46 @@ class SettingsRepository extends BaseRepository {
       };
     } catch (error) {
       this.handleError("Get Settings", error);
+    }
+  }
+
+  async getBackupData(): Promise<BackupData> {
+    const db = await this.db();
+
+    try {
+      const [
+        profile,
+        settings,
+        accounts,
+        categories,
+        transactions,
+      ] = await Promise.all([
+        db.getFirstAsync<Profile>(
+          "SELECT * FROM profile ORDER BY id ASC"
+        ),
+        db.getAllAsync<Setting>(
+          "SELECT * FROM settings ORDER BY key ASC"
+        ),
+        db.getAllAsync<Account>(
+          "SELECT * FROM accounts ORDER BY id ASC"
+        ),
+        db.getAllAsync<Category>(
+          "SELECT * FROM categories ORDER BY id ASC"
+        ),
+        db.getAllAsync<Transaction>(
+          "SELECT * FROM transactions ORDER BY id ASC"
+        ),
+      ]);
+
+      return {
+        profile,
+        settings,
+        accounts,
+        categories,
+        transactions,
+      };
+    } catch (error) {
+      this.handleError("Get Backup Data", error);
     }
   }
 
